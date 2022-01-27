@@ -18,20 +18,24 @@
 package com.microsoft.spark.osdu
 
 import java.io.IOException
+import java.util.Map
 
 import org.apache.hadoop.io.Text
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.sources.v2.reader.InputPartitionReader
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{DataType, DataTypes, StructType}
 import org.apache.spark.unsafe.types.UTF8String
 import scala.collection.JavaConverters._
+import scala.collection.mutable.Queue
 
-import osdu.client.ApiClient
+import osdu.client.{ApiClient, Configuration}
 import osdu.client.api.SearchApi
+import osdu.client.model.SearchCursorQueryRequest
 
 @SerialVersionUID(1L)
-class OSDUInputPartitionReader(query: String)
+class OSDUInputPartitionReader(kind: String, query: String, oakApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends InputPartitionReader[InternalRow] with Serializable {
 
   private val logger = Logger.getLogger(classOf[OSDUInputPartitionReader])
@@ -40,41 +44,82 @@ class OSDUInputPartitionReader(query: String)
 
   private val client = new ApiClient()
 
-  override def close(): Unit = {
-    // if (scanner != null)
-    //   scanner.close()
+  client.setBasePath(oakApiEndpoint)
+  client.setApiKey(bearerToken)
+  client.setApiKeyPrefix("Bearer")
+  client.addDefaultHeader("data-partition-id", partitionId)
 
-    // if (client != null)
-    //   client.close()
+  private val searchApi = new SearchApi(client)
+  private val queryRequest = new SearchCursorQueryRequest()
+  // private var offset: Int = 0 // TODO: could be used to parallize across multiple nodes
+  private val localBuffer = new Queue[java.util.Map[String, Object]]
+
+  queryRequest.kind(kind)
+  queryRequest.query(query)
+  // queryRequest.offset(offset)
+  queryRequest.limit(1000) // TODO: add parameter
+
+  private def schemaToPaths(nestedSchema: StructType, parent: Seq[String]): Seq[String] = {
+    nestedSchema.fields.flatMap {
+      field => {
+        val fieldPath = (parent :+ field.name)
+        if (field.dataType.isInstanceOf[StructType])
+          schemaToPaths(field.dataType.asInstanceOf[StructType], fieldPath)
+        else
+          Seq(fieldPath.mkString("."))
+      }
+    }
   }
+
+  queryRequest.setReturnedFields(schemaToPaths(schema, Seq()).asJava)
+
+
+  override def close(): Unit = { }
 
   @IOException
   override def next: Boolean = {
-      return false
-    // if (scannerIterator.hasNext) {
-    //   val entry = scannerIterator.next
-    //   val data = entry.getValue.get
 
-    //   // byte[] -> avro
-    //   decoder = DecoderFactory.get.binaryDecoder(data, decoder)
-    //   datum = reader.read(datum, decoder)
+    if (localBuffer.isEmpty) {
+      // TODO API needs cleanup
+      val result = searchApi.queryWithCursor("foo", queryRequest, null);
 
-    //   // avro -> catalyst
-    //   currentRow = deserializer.deserialize(datum).asInstanceOf[InternalRow]
+      if (result.getResults.size == 0)
+        return false
 
-    //   if (rowKeyColumnIndex >= 0) {
-    //     // move row key id into internalrow
-    //     entry.getKey.getRow(rowKeyText)
+      localBuffer ++= result.getResults.asScala
 
-    //     // avoid yet another byte array copy...
-    //     val str = UTF8String.fromBytes(rowKeyText.getBytes, 0, rowKeyText.getLength)
-    //     currentRow.update(rowKeyColumnIndex, str)
-    //   }
+      // TOOD: useful for debugging to see raw response
+      // println(result.getResults.get(0))
 
-    //   true
-    // } else {
-    //   false
-    // }
+      // use cursor for next request
+      queryRequest.setCursor(result.getCursor())
+    }
+
+    def mapToNestedArray(nestedSchema: StructType, nestedData: Map[String, Object]): Array[Any] = {
+      nestedSchema.fields.map {
+        field => {
+          val fieldData = nestedData.get(field.name)
+
+          field.dataType match {
+            case DataTypes.StringType => UTF8String.fromString(fieldData.asInstanceOf[String])
+            case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
+            case _ => {
+              if (field.dataType.isInstanceOf[StructType])
+                new GenericInternalRow(mapToNestedArray(
+                  field.dataType.asInstanceOf[StructType], 
+                  fieldData.asInstanceOf[Map[String, Object]]))
+              else
+                fieldData.asInstanceOf[Any]
+            }
+          }
+        }
+      }
+    }
+
+    val data = localBuffer.dequeue().asInstanceOf[Map[String, Object]]
+    currentRow = new GenericInternalRow(mapToNestedArray(schema, data))
+
+    return true
   }
 
   override def get(): InternalRow = currentRow

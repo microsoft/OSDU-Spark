@@ -32,9 +32,8 @@ class DefaultSource extends DataSourceV2 with ReadSupport with WriteSupport {
     throw new UnsupportedOperationException("Must supply schema")
   }
 
-  override def createReader(options: DataSourceOptions): DataSourceReader = {
-    throw new UnsupportedOperationException("Must supply schema")
-  }
+  override def createReader(options: DataSourceOptions): DataSourceReader = 
+    new OSDUDataSourceReader(options)
 
   override def createWriter(jobId: String,
                             schema: StructType,
