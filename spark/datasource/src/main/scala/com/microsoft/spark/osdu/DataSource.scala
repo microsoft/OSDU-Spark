@@ -28,8 +28,7 @@ import org.apache.spark.sql.types.StructType
 class DefaultSource extends DataSourceV2 with ReadSupport with WriteSupport {
 
   override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = {
-    // new AccumuloDataSourceReader(schema, options)
-    throw new UnsupportedOperationException("Must supply schema")
+    throw new UnsupportedOperationException("Not supported")
   }
 
   override def createReader(options: DataSourceOptions): DataSourceReader = 
@@ -39,7 +38,6 @@ class DefaultSource extends DataSourceV2 with ReadSupport with WriteSupport {
                             schema: StructType,
                             mode: SaveMode,
                             options: DataSourceOptions): Optional[DataSourceWriter] = {
-    throw new UnsupportedOperationException("Must supply schema")
-    // Optional.of(new AccumuloDataSourceWriter(schema, mode, options))
+    throw new UnsupportedOperationException("Not supported")
   }
 }
