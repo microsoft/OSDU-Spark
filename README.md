@@ -1,14 +1,89 @@
-# Project
+# Spark Datasource Connector for Open Subsurface Data Universe (OSDU)
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
 
-As the maintainer of this project, please make a few updates:
+## Features
+* Surface OSDU records as Spark data frames
+* Filtering by type and/or kind
+* Translation of OSDU schema to Spark schema
+  * Primitive types (string, integer, bool,...)
+  * Arrays
+  * Objects
+* Column pruning: based on selected fields on the Spark side, only the requested columns are requested and transferred by the OSDU instance
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+
+Brief Example
+```scala
+    val sampleDf = sc.read
+        .format("com.microsoft.spark.osdu")
+        .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
+        .option("query", "")
+        .option("oakApiEndpoint", "<INSERT>")
+        .option("partitionId", "<INSERT>")
+        .option("bearerToken","<INSERT>")
+        .load
+
+    sampleDf.printSchema()
+
+    sampleDf.show()
+```
+
+
+Output
+
+    root
+    |-- data: struct (nullable = true)
+    |    |-- ParentGeoPoliticalEntityID: string (nullable = true)
+    |    |-- GeoPoliticalEntityTypeID: string (nullable = true)
+    |    |-- TerminationDate: string (nullable = true)
+    |    |-- DisputedIndicator: boolean (nullable = true)
+    |    |-- DaylightSavingTimeStartDate: string (nullable = true)
+    |    |-- GeoPoliticalEntityName: string (nullable = true)
+    |    |-- GeoPoliticalEntityID: string (nullable = true)
+    |    |-- DaylightSavingTimeEndDate: string (nullable = true)
+    |    |-- EffectiveDate: string (nullable = true)
+    |-- kind: string (nullable = false)
+    |-- version: integer (nullable = true)
+    |-- modifyUser: string (nullable = true)
+    |-- modifyTime: string (nullable = true)
+    |-- createTime: string (nullable = true)
+    |-- status: string (nullable = true)
+    |-- createUser: string (nullable = true)
+    |-- id: string (nullable = true)
+
+    +--------------------+--------------------+----------+----------+----------+--------------------+------+--------------------+--------------------+
+    |                data|                kind|   version|modifyUser|modifyTime|          createTime|status|          createUser|                  id|
+    +--------------------+--------------------+----------+----------+----------+--------------------+------+--------------------+--------------------+
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|oakkmtest-opendes...|
+    +--------------------+--------------------+----------+----------+----------+--------------------+------+--------------------+--------------------+
+
+## Dev
+To build and run the unit test, you need to have the OSDU Java SDK provided by Project Oak team installed into the local maven cache.
+To run the sandbox run 
+
+```bash
+cd spark/datasource
+sbt testOnly 
+```
+
 
 ## Contributing
 
