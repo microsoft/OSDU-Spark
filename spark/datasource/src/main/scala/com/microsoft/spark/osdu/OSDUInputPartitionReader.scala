@@ -20,21 +20,27 @@ package com.microsoft.spark.osdu
 import java.io.IOException
 import java.util.Map
 
-import org.apache.hadoop.io.Text
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.sources.v2.reader.InputPartitionReader
 import org.apache.spark.sql.types.{ArrayType, DataType, DataTypes, StructType}
-import org.apache.spark.unsafe.types.UTF8String
 import scala.collection.JavaConverters._
 import scala.collection.mutable.Queue
-import org.apache.spark.sql.catalyst.util.ArrayData
 
 import osdu.client.{ApiClient, Configuration}
 import osdu.client.api.SearchApi
 import osdu.client.model.SearchCursorQueryRequest
 
+/**
+  * A [[InputPartitionReader]] for reading data from a [[SearchApi]].
+  *
+  * @param kind The OSDU record kind.
+  * @param query The OSDU query string.
+  * @param oakApiEndpoint HTTPS endpoint of the Oak API.
+  * @param partitionId The OSDU partition id.
+  * @param bearerToken The authentication bearer token.
+  * @param schema The pruned schema of the data.
+  */
 @SerialVersionUID(1L)
 class OSDUInputPartitionReader(kind: String, query: String, oakApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends InputPartitionReader[InternalRow] with Serializable {
@@ -43,6 +49,9 @@ class OSDUInputPartitionReader(kind: String, query: String, oakApiEndpoint: Stri
 
   private var currentRow: InternalRow = _
 
+  private val osduRecordConverter = new OSDURecordConverter(schema)
+
+  // setup REST client
   private val client = new ApiClient()
 
   client.setBasePath(oakApiEndpoint)
@@ -52,41 +61,28 @@ class OSDUInputPartitionReader(kind: String, query: String, oakApiEndpoint: Stri
 
   private val searchApi = new SearchApi(client)
   private val queryRequest = new SearchCursorQueryRequest()
-  // private var offset: Int = 0 // TODO: could be used to parallize across multiple nodes
   private val localBuffer = new Queue[java.util.Map[String, Object]]
 
   queryRequest.kind(kind)
   queryRequest.query(query)
+ // TODO: expose to API surface
+  queryRequest.limit(1000)
+
+  // TODO: could be used to parallize across multiple nodes - while sacrificing consistency
+  // private var offset: Int = 0 
   // queryRequest.offset(offset)
-  queryRequest.limit(1000) // TODO: add parameter
 
-  private def schemaToPaths(nestedSchema: StructType, parent: Seq[String]): Seq[String] = {
-    nestedSchema.fields.flatMap {
-      field => {
-        val fieldPath = (parent :+ field.name)
-        if (field.dataType.isInstanceOf[StructType])
-          schemaToPaths(field.dataType.asInstanceOf[StructType], fieldPath)
-        if (field.dataType.isInstanceOf[ArrayType]) {
-          val arrType = field.dataType.asInstanceOf[ArrayType]
-
-          if (arrType.elementType.isInstanceOf[StructType])
-            schemaToPaths(arrType.elementType.asInstanceOf[StructType], fieldPath)
-          else
-            Seq(fieldPath.mkString("."))
-        }
-        else
-          Seq(fieldPath.mkString("."))
-      }
-    }
-  }
-
-  // println(schemaToPaths(schema, Seq()).mkString("\n"))
-
-  queryRequest.setReturnedFields(schemaToPaths(schema, Seq()).asJava)
-
+    // prune schema to only include fields that are used in the query
+  queryRequest.setReturnedFields(OSDUSchemaConverter.schemaToPaths(schema).asJava)
 
   override def close(): Unit = { }
 
+  /** Advance to the next row. 
+    * 
+    * Uses a simple queue interally to buffer the batch records returned by the API.
+    *
+    * @return True if there is a next row, false otherwise.
+    */
   @IOException
   override def next: Boolean = {
 
@@ -95,66 +91,25 @@ class OSDUInputPartitionReader(kind: String, query: String, oakApiEndpoint: Stri
       val result = searchApi.queryWithCursor("foo", queryRequest, null);
 
       if (result.getResults.size == 0)
+        // No more records
         return false
 
+      // append batch to local buffer
       localBuffer ++= result.getResults.asScala
 
-      // TOOD: useful for debugging to see raw response
+      // TODO: useful for debugging to see raw response
       // println(result.getResults.get(0))
 
       // use cursor for next request
+      // service keeps the cursor open for 5 minutes
       queryRequest.setCursor(result.getCursor())
     }
 
-    def mapToNestedArray(nestedSchema: StructType, nestedData: Map[String, Object]): Array[Any] = {
-      nestedSchema.fields.map {
-        field => {
-          val fieldData = nestedData.get(field.name)
-
-          field.dataType match {
-            // primitive types
-            case DataTypes.StringType => UTF8String.fromString(fieldData.asInstanceOf[String])
-            case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
-            // complex types
-            case _ => {
-              // struct handling
-              if (field.dataType.isInstanceOf[StructType])
-                new GenericInternalRow(mapToNestedArray(
-                  field.dataType.asInstanceOf[StructType], 
-                  fieldData.asInstanceOf[Map[String, Object]]))
-              // array handling
-              else if (field.dataType.isInstanceOf[ArrayType]) {
-                val arrType = field.dataType.asInstanceOf[ArrayType]
-                // println(field.name)
-                // println(nestedData)
-
-                if (fieldData == null)
-                  // TODO: all arrays are nullable, but passing null doesn't work
-                  ArrayData.toArrayData(new Array[Any](0))
-                else {
-                  val elems = fieldData.asInstanceOf[List[Any]].map {
-                    elem => {
-                      arrType.elementType match {
-                        case DataTypes.StringType => UTF8String.fromString(elem.asInstanceOf[String])
-                        case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
-                        case _ => mapToNestedArray(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
-                      }
-                    }
-                  }
-
-                  ArrayData.toArrayData(elems.toArray)
-                }
-              }
-              else
-                fieldData.asInstanceOf[Any]
-            }
-          }
-        }
-      }
-    }
-
+    // get the next row
     val data = localBuffer.dequeue().asInstanceOf[Map[String, Object]]
-    currentRow = new GenericInternalRow(mapToNestedArray(schema, data))
+
+    // extract data from OSDU record structure
+    currentRow = osduRecordConverter.toInternalRow(data)
 
     return true
   }

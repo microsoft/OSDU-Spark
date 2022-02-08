@@ -39,6 +39,7 @@ class OSDUDataSourceReader(options: DataSourceOptions)
 
   private val defaultMaxPartitions = 1
 
+  // get input parameters
   private val kind = options.get("kind").orElse("")
   private val query = options.get("query").orElse("")
   private val oakApiEndpoint = options.get("oakApiEndpoint").get
@@ -47,13 +48,17 @@ class OSDUDataSourceReader(options: DataSourceOptions)
 
   var prunedSchema: Option[StructType] = None
 
-   override def pruneColumns(requiredSchema: StructType): Unit = {
+  /** Prune the schema by removing all fields that are not specified by the user.
+   */ 
+  override def pruneColumns(requiredSchema: StructType): Unit = {
     //  println(s"Discovered Schema $schemaForKind")
     //  println(s"RequiredSchema    $requiredSchema")
      prunedSchema = Some(requiredSchema)
-   }
+  }
 
+  // TODO: why is this executed twice???
   private lazy val schemaForKind = {
+    // setup REST client
     val client = new ApiClient()
 
     client.setBasePath(oakApiEndpoint)
@@ -63,96 +68,20 @@ class OSDUDataSourceReader(options: DataSourceOptions)
 
     val schemaApi = new SchemaApi(client)
 
+    // fetch OSDU schema from service
     val schema = schemaApi.getSchema(partitionId, kind).asInstanceOf[Map[String, Object]]
 
     // definitions are top-level
-    var definitions = schema.get("definitions").asInstanceOf[Map[String, Map[String, Object]]]
+    val definitions = schema.get("definitions").asInstanceOf[Map[String, Map[String, Object]]]
 
-    def osduSchemaToStruct(obj: Map[String, Object]): Option[StructType] = {
-      // println(s"osduSchemaToStruct $obj") // use for debugging
-
-      // fetch mandatory fields and translate to nullable flag
-      val required = obj.getOrDefault("required", new ArrayList[String]()).asInstanceOf[List[String]]
-
-      val props = obj.get("properties").asInstanceOf[Map[String, Map[String, Object]]].asScala
-      if (props == null) {
-        // from a global/union perpsective allOf/anyOf has the same behavior
-        var axxOf = obj.get("allOf").asInstanceOf[List[Map[String, Object]]]
-        if (axxOf == null) 
-          axxOf = obj.get("anyOf").asInstanceOf[List[Map[String, Object]]]
-        if (axxOf == null)
-          axxOf = obj.get("oneOf").asInstanceOf[List[Map[String, Object]]]
-
-        if (axxOf == null)
-          None
-        else {
-          // union all properties of objects contained in allOf list
-          val subFields = axxOf.asScala.flatMap { osduSchemaToStruct(_).map { _.fields } }
-          // flatten - distinctBy name
-          Some(new StructType(subFields.flatten.toList.groupBy(_.name).map(_._2.head).toArray))
-        }
-      }
-      else {
-        val fields = props.flatMap { 
-          case (propertyName, obj) => {
-            var refStr = obj.get("$ref").asInstanceOf[String];
-            if (refStr != null) {
-              // inject definition
-              osduSchemaToStruct(definitions.get(refStr.substring("#/definitions/".length))).get.fields
-            }
-            else {
-              def resolveDataType(subObj: Map[String, Object]): Option[DataType] = {
-                subObj.get("type").asInstanceOf[String] match {
-                  case "string"  => Some(StringType)
-                  case "boolean" => Some(BooleanType)
-                  case "integer" => Some(IntegerType)
-                  case "object" => osduSchemaToStruct(subObj)
-                  case "array" => { 
-                    val itemData = subObj.get("items").asInstanceOf[Map[String, Object]]
-                    // resolve primitive & complex types
-                    val elemType = resolveDataType(itemData).getOrElse({
-                      // resolve reference types
-                      val refStr = itemData.get("$ref").asInstanceOf[String].substring("#/definitions/".length)
-                      // recurse
-                      osduSchemaToStruct(definitions.get(refStr)).get
-                    })
-                    Some(ArrayType(elemType, true))
-                  }
-                  case null => osduSchemaToStruct(subObj)
-                  case _ => {
-                    // val typeAny = obj.get("type")
-                    // println(s"UNSUPPORTED TYPE $typeAny")
-                    None
-                  }
-                }
-              }
-
-              val resolvedDataType = resolveDataType(obj)
-              val comment = obj.get("description").asInstanceOf[String]
-              val isNullable = !required.contains(propertyName)
-
-              resolvedDataType.map { StructField(propertyName, _, isNullable).withComment(comment) }
-            }
-          }
-        }
-        // 2.13.x
-        // Some(new StructType(fields.toSeq.distinctBy { _.name } .toArray))
-
-        // 2.12.x
-        Some(new StructType(fields.toList.groupBy(_.name).map(_._2.head).toArray))
-      }
-
-      // TODO: de-duplicate fields of the same name (can happen w/ inheritance/abstract/...)
-
-    }
-
-  // TODO: why is this executed twice???
-    osduSchemaToStruct(schema).get
+    // convert OSDU schema to Spark SQL schema
+    new OSDUSchemaConverter(definitions).osduSchemaToStruct(schema).get
   }
 
-
+  // The final schema used to read the data
   def readSchema: StructType = prunedSchema.getOrElse(schemaForKind)
 
+  // TODO: implement pushFilters.
 //   override def pushFilters(filters: Array[Filter]): Array[Filter] = {
 //     // unfortunately predicates on nested elements are not pushed down by Spark
 //     // https://issues.apache.org/jira/browse/SPARK-17636
@@ -177,8 +106,16 @@ class OSDUDataSourceReader(options: DataSourceOptions)
   def planInputPartitions: List[InputPartition[InternalRow]] = {
     // TODO: we could return multiple readers to parallelize the invocation, but we'd loose consistency as I'm not sure how to share the cursor
 
-    new ArrayList[InputPartition[InternalRow]](Seq(new PartitionReaderFactory(kind, query, oakApiEndpoint, partitionId, bearerToken,
-      prunedSchema.getOrElse(schemaForKind))).asJava)
+    // create a single partition to read
+    new ArrayList[InputPartition[InternalRow]](
+      Seq(
+        new PartitionReaderFactory(
+          kind,
+          query,
+          oakApiEndpoint,
+          partitionId,
+          bearerToken,
+          prunedSchema.getOrElse(schemaForKind))).asJava)
   }
 }
 
@@ -194,7 +131,7 @@ class PartitionReaderFactory(
 
   def createPartitionReader: InputPartitionReader[InternalRow] = {
 
-    Logger.getLogger(classOf[OSDUDataSourceReader]).info(s"Partition reader for $query")
+    Logger.getLogger(classOf[OSDUDataSourceReader]).info(s"Partition reader for $kind & $query")
 
     new OSDUInputPartitionReader(kind, query, oakApiEndpoint, partitionId, bearerToken, schema)
   }

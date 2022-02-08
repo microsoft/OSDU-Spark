@@ -9,7 +9,7 @@ val sparkVersion = "2.4.4"
 libraryDependencies ++= Seq( 
   "org.apache.spark" %% "spark-core" % sparkVersion % "compile",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "compile",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+  "org.scalatest" %% "scalatest" % "3.2.10" % "test",
   "com.microsoft" % "osdu-client" % "1.0.0" 
 )
 

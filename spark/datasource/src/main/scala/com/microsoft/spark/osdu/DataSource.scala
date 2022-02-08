@@ -25,6 +25,7 @@ import org.apache.spark.sql.sources.v2.writer.DataSourceWriter
 import org.apache.spark.sql.sources.v2.{DataSourceOptions, DataSourceV2, ReadSupport, WriteSupport}
 import org.apache.spark.sql.types.StructType
 
+/** Spark DataSourceV2 implementation for OSDU Record API */
 class DefaultSource extends DataSourceV2 with ReadSupport with WriteSupport {
 
   override def createReader(schema: StructType, options: DataSourceOptions): DataSourceReader = {
