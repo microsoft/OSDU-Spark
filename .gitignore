@@ -24,4 +24,6 @@ hs_err_pid*
 
 JavaSDK/
 spark/datasource/target/
-spark/datasource/project/
+spark/datasource/project/target/
+spark/datasource/project/project/
+spark/datasource/.idea/

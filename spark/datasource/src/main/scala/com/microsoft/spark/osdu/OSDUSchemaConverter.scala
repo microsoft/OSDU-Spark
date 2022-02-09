@@ -31,6 +31,7 @@ class OSDUSchemaConverter(definitions: Map[String, Map[String, Object]]) {
         case "string"  => Some(StringType)
         case "boolean" => Some(BooleanType)
         case "integer" => Some(IntegerType)
+        case "number"  => Some(DoubleType)
         case "double"  => Some(DoubleType)
         case "float"   => Some(DoubleType)
         // recurse into nested schema
@@ -98,7 +99,14 @@ class OSDUSchemaConverter(definitions: Map[String, Map[String, Object]]) {
               val comment = obj.get("description").asInstanceOf[String]
               val isNullable = !required.contains(propertyName)
 
-              resolvedDataType.map { StructField(propertyName, _, isNullable).withComment(comment) }
+              // TODO: we could propagate the metadata
+              val metadata = new MetadataBuilder()
+                .putString("pattern", obj.get("pattern").asInstanceOf[String])
+                .putString("title",   obj.get("title").asInstanceOf[String])
+              // TODO: x-osdu-relationship
+                .build()
+
+              resolvedDataType.map { StructField(propertyName, _, isNullable, metadata).withComment(comment) }
             }
           }
         }
@@ -112,7 +120,17 @@ class OSDUSchemaConverter(definitions: Map[String, Map[String, Object]]) {
 }
 
 object OSDUSchemaConverter {
- /** Maps a Spark SQL schema to JSON-like paths
+
+  /** Convert OSDU schema definition to Spark SQL struct */
+  def toStruct(schema: Map[String, Object]): StructType = {
+    // definitions are top-level
+    val definitions = schema.get("definitions").asInstanceOf[Map[String, Map[String, Object]]]
+
+    // run converter
+    new OSDUSchemaConverter(definitions).osduSchemaToStruct(schema).get
+  }
+
+  /** Maps a Spark SQL schema to JSON-like paths
    *
    * @param schema Spark SQL schema.
    * @return Sequence of all fields in dot-notation (e.g. a.b.c, d.e, ...)

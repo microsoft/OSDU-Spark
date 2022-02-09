@@ -18,7 +18,6 @@
 package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.GenericInternalRow
 import org.apache.spark.sql.types._
 import org.apache.log4j.Logger
 import java.util.{ArrayList, Map, List, UUID}
@@ -28,67 +27,67 @@ import org.apache.spark.sql.catalyst.util.ArrayData
 
 /** Convert OSDU schema to Spark SQL schema. */
 class OSDURecordConverter(schema: StructType) {
-    private val logger = Logger.getLogger(classOf[OSDURecordConverter])
+  private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
-    def toInternalRow(data: Map[String, Object]): InternalRow = new GenericInternalRow(toNestedArray(schema, data))
+  def toInternalRow(data: Map[String, Object]): InternalRow = InternalRow.fromSeq(toSeq(schema, data))
 
-    /** Extracts the fields from the current OSDU record.
-     *
-     * @param nestedSchema The Spark SQL schema to follow.
-     * @param nestedData The OSDU record to extract the fields from.
-     * @return The data for the internal row.
-     */
-    private def toNestedArray(nestedSchema: StructType, nestedData: Map[String, Object]): Array[Any] = {
-      nestedSchema.fields.map {
-        field => {
-          val fieldData = nestedData.get(field.name)
+  /** Extracts the fields from the current OSDU record.
+   *
+   * @param nestedSchema The Spark SQL schema to follow.
+   * @param nestedData The OSDU record to extract the fields from.
+   * @return The data for the internal row.
+   */
+  private def toSeq(nestedSchema: StructType, nestedData: Map[String, Object]): Seq[Any] = {
+    nestedSchema.fields.map {
+      field => {
+        val fieldData = nestedData.get(field.name)
 
-          field.dataType match {
-            // primitive types
-            case DataTypes.StringType  => UTF8String.fromString(fieldData.asInstanceOf[String])
-            case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
-            case DataTypes.DoubleType  => fieldData.asInstanceOf[Double].toInt
-            // complex types
-            case _ => {
-              if (field.dataType.isInstanceOf[StructType])
-                // Recurse into nested fields
-                // Nested records get their own internal row
-                new GenericInternalRow(
-                  toNestedArray(
-                    field.dataType.asInstanceOf[StructType], 
-                    fieldData.asInstanceOf[Map[String, Object]]))
-              else if (field.dataType.isInstanceOf[ArrayType]) {
-                val arrType = field.dataType.asInstanceOf[ArrayType]
+        field.dataType match {
+          // primitive types
+          case DataTypes.StringType  => fieldData.asInstanceOf[String]
+          case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
+          case DataTypes.DoubleType  => fieldData.asInstanceOf[Double]
+          // complex types
+          case _ => {
+            if (field.dataType.isInstanceOf[StructType])
+              // Recurse into nested fields
+              // Nested records get their own internal row
+              InternalRow.fromSeq(
+                toSeq(
+                  field.dataType.asInstanceOf[StructType], 
+                  fieldData.asInstanceOf[Map[String, Object]]))
+            else if (field.dataType.isInstanceOf[ArrayType]) {
+              val arrType = field.dataType.asInstanceOf[ArrayType]
 
-                if (fieldData == null)
-                  // Empty array
-                  // TODO: all arrays are nullable, but passing null doesn't work
-                  ArrayData.toArrayData(new Array[Any](0))
-                else {
-                  // process array
-                  val elems = fieldData.asInstanceOf[List[Any]].asScala.map {
-                    elem => {
-                      arrType.elementType match {
-                        // primitive types
-                        case DataTypes.StringType  => UTF8String.fromString(elem.asInstanceOf[String])
-                        case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
-                        case DataTypes.DoubleType  => elem.asInstanceOf[Double].toInt
-                        // recurse into nested fields
-                        case _ => toNestedArray(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
-                      }
+              if (fieldData == null)
+                // Empty array
+                // TODO: all arrays are nullable, but passing null doesn't work
+                ArrayData.toArrayData(new Array[Any](0))
+              else {
+                // process array
+                val elems = fieldData.asInstanceOf[List[Any]].asScala.map {
+                  elem => {
+                    arrType.elementType match {
+                      // primitive types
+                      case DataTypes.StringType  => elem.asInstanceOf[String]
+                      case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
+                      case DataTypes.DoubleType  => elem.asInstanceOf[Double]
+                      // recurse into nested fields
+                      case _ => toSeq(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
                     }
                   }
-
-                  // create Spark SQL ArrayData
-                  ArrayData.toArrayData(elems.toArray)
                 }
+
+                // create Spark SQL ArrayData
+                ArrayData.toArrayData(elems.toArray)
               }
-              else
-                // Fallback
-                fieldData.asInstanceOf[Any]
             }
+            else
+              // Fallback
+              fieldData.asInstanceOf[Any]
           }
         }
       }
     }
+  }
 }

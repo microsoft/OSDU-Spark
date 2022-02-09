@@ -71,11 +71,8 @@ class OSDUDataSourceReader(options: DataSourceOptions)
     // fetch OSDU schema from service
     val schema = schemaApi.getSchema(partitionId, kind).asInstanceOf[Map[String, Object]]
 
-    // definitions are top-level
-    val definitions = schema.get("definitions").asInstanceOf[Map[String, Map[String, Object]]]
-
     // convert OSDU schema to Spark SQL schema
-    new OSDUSchemaConverter(definitions).osduSchemaToStruct(schema).get
+    OSDUSchemaConverter.toStruct(schema)
   }
 
   // The final schema used to read the data

@@ -14,3 +14,5 @@ libraryDependencies ++= Seq(
 )
 
 resolvers += Resolver.mavenLocal
+
+coverageEnabled in ThisBuild := true

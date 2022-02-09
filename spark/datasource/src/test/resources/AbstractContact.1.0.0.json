@@ -1,0 +1,77 @@
+{
+    "x-osdu-license": "Copyright 2022, The Open Group \\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 . Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.",
+    "x-osdu-review-status": "Accepted",
+    "$id": "https://schema.osdu.opengroup.org/json/abstract/AbstractContact.1.0.0.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "x-osdu-schema-source": "osdu:wks:AbstractContact:1.0.0",
+    "title": "Abstract Contact",
+    "description": "An object with properties that describe a specific person or other point-of-contact (like an email distribution list) that is relevant in this context (like a given data set or business project). The contact specified may be either internal or external to the organisation (something denoted via the Organisation object that is referenced). Note that some properties contain personally identifiable information, so it might not be appropriate to populate all properties in all scenarios.",
+    "type": "object",
+    "properties": {
+      "EmailAddress": {
+        "type": "string",
+        "title": "Email Address",
+        "description": "Contact email address. Property may be left empty where it is inappropriate to provide personally identifiable information.",
+        "example": "support@company.com",
+        "x-osdu-attribution-authority": "The Open Group",
+        "x-osdu-attribution-publication": "The OSDU Data Platform",
+        "x-osdu-attribution-revision": "Evergreen"
+      },
+      "PhoneNumber": {
+        "type": "string",
+        "title": "Phone Number",
+        "description": "Contact phone number. Property may be left empty where it is inappropriate to provide personally identifiable information.",
+        "example": "1-555-281-5555",
+        "x-osdu-attribution-authority": "The Open Group",
+        "x-osdu-attribution-publication": "The OSDU Data Platform",
+        "x-osdu-attribution-revision": "Evergreen"
+      },
+      "RoleTypeID": {
+        "type": "string",
+        "title": "Role Type ID",
+        "description": "The identifier of a reference value for the role of the contact within the associated organisation, such as Account owner, Sales Representative, Technical Support, Project Manager, Party Chief, Client Representative, Senior Observer.",
+        "x-osdu-attribution-authority": "The Open Group",
+        "x-osdu-attribution-publication": "The OSDU Data Platform",
+        "x-osdu-attribution-revision": "Evergreen",
+        "pattern": "^[\\w\\-\\.]+:reference-data\\-\\-ContactRoleType:[\\w\\-\\.\\:\\%]+:[0-9]*$",
+        "x-osdu-relationship": [
+          {
+            "GroupType": "reference-data",
+            "EntityType": "ContactRoleType"
+          }
+        ]
+      },
+      "Comment": {
+        "type": "string",
+        "title": "Comment",
+        "description": "Additional information about the contact",
+        "x-osdu-attribution-authority": "The Open Group",
+        "x-osdu-attribution-publication": "The OSDU Data Platform",
+        "x-osdu-attribution-revision": "Evergreen"
+      },
+      "OrganisationID": {
+        "type": "string",
+        "title": "Organisation ID",
+        "description": "Reference to the company the contact is associated with.",
+        "x-osdu-attribution-authority": "The Open Group",
+        "x-osdu-attribution-publication": "The OSDU Data Platform",
+        "x-osdu-attribution-revision": "Evergreen",
+        "pattern": "^[\\w\\-\\.]+:master-data\\-\\-Organisation:[\\w\\-\\.\\:\\%]+:[0-9]*$",
+        "x-osdu-relationship": [
+          {
+            "GroupType": "master-data",
+            "EntityType": "Organisation"
+          }
+        ]
+      },
+      "Name": {
+        "type": "string",
+        "title": "Name",
+        "description": "Name of the individual contact. Property may be left empty where it is inappropriate to provide personally identifiable information.",
+        "x-osdu-attribution-authority": "The Open Group",
+        "x-osdu-attribution-publication": "The OSDU Data Platform",
+        "x-osdu-attribution-revision": "Evergreen"
+      }
+    },
+    "x-osdu-inheriting-from-kind": []
+}
