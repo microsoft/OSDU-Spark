@@ -33,13 +33,13 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
         StructField("b", DataTypes.DoubleType) ::
         StructField("c", DataTypes.StringType) :: Nil)
 
-    val data =  Map("a" -> 1.0,
+    val data =  Map("a" -> 1.0, // Note: the service returns a double literal even though it's an integer
                     "b" -> 2.3,
                     "c" -> "str")
                     .asJava
                     .asInstanceOf[java.util.Map[String, Object]]
 
-    val actual = new OSDURecordConverter(schema).toInternalRow(data)
+    val actual= new OSDURecordConverter(schema).toInternalRow(data)
     val expected = InternalRow.fromSeq(Seq(1, 2.3, "str"))
 
     // println(row.get(0, DataTypes.StringType).getClass)
@@ -53,12 +53,30 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
     assert(actual == expected)
   }
 
+  test("Primitive Types Reverse (keep integer)") {
+    val schema = StructType(
+        StructField("a", DataTypes.IntegerType) ::
+        StructField("b", DataTypes.DoubleType) ::
+        StructField("c", DataTypes.StringType) :: Nil)
+
+    val expected =  Map("a" -> 1,
+                        "b" -> 2.3,
+                        "c" -> "str")
+                        .asJava
+                        .asInstanceOf[java.util.Map[String, Object]]
+
+    val row = InternalRow.fromSeq(Seq(1, 2.3, "str"))
+    val actual = new OSDURecordConverter(schema).toJava(row)
+
+    assert(actual == expected)
+  }
+
   test("Nested Types") {
     val schema = StructType(
         StructField("a", 
           StructType(
-            StructField("x", DataTypes.IntegerType) ::
-            StructField("y", DataTypes.IntegerType) :: Nil)) ::
+            StructField("x", DataTypes.DoubleType) ::
+            StructField("y", DataTypes.DoubleType) :: Nil)) ::
         StructField("c", DataTypes.StringType) :: Nil)
 
     val data =  Map("a" -> Map("x" -> 1.0, "y" -> 2.0).asJava,
@@ -66,10 +84,14 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
                     .asJava
                     .asInstanceOf[java.util.Map[String, Object]]
 
-    val actual = new OSDURecordConverter(schema).toInternalRow(data)
-    val expected = InternalRow.fromSeq(Seq(InternalRow.fromSeq(Seq(1, 2)), "str"))
+    val converter = new OSDURecordConverter(schema)
+    val row = InternalRow.fromSeq(Seq(InternalRow.fromSeq(Seq(1.0, 2.0)), "str"))
 
-    assert(actual == expected)
+    val actualRow = converter.toInternalRow(data)
+    val actualData = converter.toJava(row)
+
+    assert(actualRow == row)
+    assert(actualData == data)
   }
 
   test("Array") {
@@ -79,10 +101,14 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
                     .asJava
                     .asInstanceOf[java.util.Map[String, Object]]
 
-    val actual = new OSDURecordConverter(schema).toInternalRow(data)
-    val expected = InternalRow.fromSeq(Seq(ArrayData.toArrayData(Seq("x", "y"))))
+    val converter = new OSDURecordConverter(schema)
+    val row = InternalRow.fromSeq(Seq(ArrayData.toArrayData(Seq("x", "y"))))
 
-    assert(actual == expected)
+    val actualRow = converter.toInternalRow(data)
+    val actualData = converter.toJava(row)
+
+    assert(actualRow == row)
+    assert(actualData == data)
   }
 
   // TODO: empty array

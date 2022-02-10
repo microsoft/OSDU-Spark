@@ -35,9 +35,8 @@ import osdu.client.api.SchemaApi
 @SerialVersionUID(1L)
 class OSDUDataSourceReader(options: DataSourceOptions)
   extends DataSourceReader with Serializable with SupportsPushDownRequiredColumns { // with SupportsPushDownFilters {
+    
   private val logger = Logger.getLogger(classOf[OSDUDataSourceReader])
-
-  private val defaultMaxPartitions = 1
 
   // get input parameters
   private val kind = options.get("kind").orElse("")

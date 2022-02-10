@@ -29,7 +29,65 @@ import org.apache.spark.sql.catalyst.util.ArrayData
 class OSDURecordConverter(schema: StructType) {
   private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
+  /** Extracts the fields from the current OSDU record.
+    *
+    * @param record The OSDU record.
+    * @return The internal row holding the extracted fields.
+    */
   def toInternalRow(data: Map[String, Object]): InternalRow = InternalRow.fromSeq(toSeq(schema, data))
+
+  def toJava(row: InternalRow): Map[String, Object] = toJava(row, schema)
+
+  // private def toSeq(nestedSchema: StructType, nestedData: Map[String, Object]): Seq[Any] = {
+  private def toJava(row: InternalRow, nestedSchema: StructType): Map[String, Object] = {
+    val map = new java.util.HashMap[String, Object]()
+    for (i <- 0 until row.numFields) {
+      val fieldDataType = nestedSchema.fields(i).dataType
+
+      if (fieldDataType.isInstanceOf[ArrayType]) {
+        // handle arrays
+        val elementType = nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType
+        
+        val list = new ArrayList[Object]()
+        val array = row.getArray(i).asInstanceOf[ArrayData]
+
+        if (elementType.isInstanceOf[StructType]) {
+          // handle structs in arrays
+          val elementTypeAsStruct = elementType.asInstanceOf[StructType]
+
+          for (j <- 0 until array.numElements()) {
+            list.add(
+              toJava(
+                array.getStruct(j, elementTypeAsStruct.size),
+                elementTypeAsStruct))
+          }
+          map.put(nestedSchema.fields(i).name, list)
+        }
+        else {
+          // handle all other types
+          for (j <- 0 until array.numElements())
+            list.add(array.get(j, nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType))
+          
+          map.put(nestedSchema.fields(i).name, list)
+        }
+      }
+      else if (fieldDataType.isInstanceOf[StructType]) {
+        // handle nested structs and recurse
+        map.put(
+            nestedSchema.fields(i).name,
+            toJava(
+              row.getStruct(
+                i,
+                nestedSchema.fields(i).dataType.asInstanceOf[StructType].size),
+              nestedSchema.fields(i).dataType.asInstanceOf[StructType]))
+      }
+      else
+        // handle primitive types
+        map.put(nestedSchema.fields(i).name, row.get(i, fieldDataType))
+    }
+
+    map
+  }
 
   /** Extracts the fields from the current OSDU record.
    *

@@ -39,6 +39,6 @@ class DefaultSource extends DataSourceV2 with ReadSupport with WriteSupport {
                             schema: StructType,
                             mode: SaveMode,
                             options: DataSourceOptions): Optional[DataSourceWriter] = {
-    throw new UnsupportedOperationException("Not supported")
+    Optional.of(new OSDUDataSourceWriter(schema, mode, options))
   }
 }
