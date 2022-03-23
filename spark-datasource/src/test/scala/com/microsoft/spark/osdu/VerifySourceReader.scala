@@ -23,34 +23,89 @@ import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.types.{ArrayType, DataTypes, StructField, StructType}
 
 import org.scalatest.funsuite.AnyFunSuite
+import java.net.{HttpURLConnection, URL, URLEncoder}
+import com.fasterxml.jackson.databind.ObjectMapper
 
 class VerifySourceReader extends AnyFunSuite {
+
+  val tenantId = ""
+  val clientId = ""
+  val clientSecret = ""
+
+  val partitionId = ""
+  val osduApiEndpoint = "https://"
+
+  def getBearerToken(): String = { 
+    val clientSecretEncoded = URLEncoder.encode(clientSecret,"UTF-8")
+
+    val endpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/token"
+    val postBody = s"grant_type=client_credentials&client_id=$clientId&client_secret=$clientSecretEncoded&resource=$clientId"
+    val conn = new URL(endpoint).openConnection.asInstanceOf[HttpURLConnection]
+    conn.setRequestMethod("POST")
+    conn.addRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+    conn.setDoOutput(true)
+    conn.getOutputStream().write(postBody.getBytes)
+    conn.connect
+
+    val responseJson = scala.io.Source.fromInputStream(conn.getInputStream).mkString
+    val response = new ObjectMapper().readValue[java.util.Map[String, String]](responseJson, classOf[java.util.Map[String, String]])
+
+    response.get("access_token")
+  }
+
   test("OSDU to Spark") {
-    // val conf = new SparkConf()
-    //     .setMaster("local") // local instance
-    //     .setAppName("OSDUIntegrationTest")
+    val conf = new SparkConf()
+        .setMaster("local") // local instance
+        .setAppName("OSDUIntegrationTest")
 
-    // val sc = SparkSession.builder().config(conf).getOrCreate()
+    val sc = SparkSession.builder().config(conf).getOrCreate()
 
-    // val sampleDf = sc.read
-    //     .format("com.microsoft.spark.osdu")
-    //     .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
-    //     .option("query", "")
-    //     .option("osduApiEndpoint", "https://YYY.energy.azure.com")
-    //     .option("partitionId", "YYY-opendes")
-    //     .option("bearerToken", "XXX")
-    //     .load
-    //     // .select("id", "kind", "data.GeoPoliticalEntityID")
+    val sampleDf = sc.read
+        .format("com.microsoft.spark.osdu")
+        .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
+        .option("query", "")
+        .option("osduApiEndpoint", osduApiEndpoint)
+        .option("partitionId", partitionId)
+        .option("bearerToken", getBearerToken)
+        .load
+        // .select("id", "kind", "data.GeoPoliticalEntityID")
 
 
-    // sampleDf.printSchema()
+    sampleDf.printSchema()
 
-    // sampleDf.show()
+    sampleDf.show()
 
-    // sampleDf.select("id", "kind", "data.GeoPoliticalEntityID").show()
+    sampleDf.select("id", "kind", "data.GeoPoliticalEntityID").show()
   }
 
   test("Spark to ODSU") {
+    // TODO: the following tag needs to be pre-populated w/ the OSDU instance
+    /*
+
+POST {{LEGAL_HOST}}/legaltags
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+data-partition-id: {{DATA_PARTITION}}
+
+{
+  "name": "{{tag}}",
+  "description": "This tag is used by Check Scripts",
+  "properties": {
+    "countryOfOrigin": [
+      "US"
+    ],
+    "contractId": "A1234",
+    "expirationDate": "2022-12-31",
+    "originator": "MyCompany",
+    "dataType": "Transferred Data",
+    "securityClassification": "Public",
+    "personalData": "No Personal Data",
+    "exportClassification": "EAR99"
+  }
+}
+
+    */
+
     val conf = new SparkConf()
         .setMaster("local") // local instance
         .setAppName("OSDUIntegrationTest")
@@ -79,8 +134,8 @@ class VerifySourceReader extends AnyFunSuite {
       StructField(
         "data", 
         StructType(
-          StructField("GeoPoliticalEntityID", DataTypes.StringType, false) ::
           StructField("GeoPoliticalEntityName", DataTypes.StringType, false) ::
+          StructField("GeoPoliticalEntityID", DataTypes.StringType, false) ::
           StructField("NameAliases", ArrayType(DataTypes.StringType, false), false) :: Nil
         ),
         false) :: Nil
@@ -92,13 +147,13 @@ class VerifySourceReader extends AnyFunSuite {
       // kind
       "osdu:wks:master-data--GeoPoliticalEntity:1.0.0", 
        // ACL
-       Row(Seq("data.default.viewers@projectosdu5543-opendes.contoso.com"), 
-           Seq("data.default.owners@projectosdu5543-opendes.contoso.com")),
+       Row(Seq(s"data.default.viewers@${partitionId}.contoso.com"), 
+           Seq(s"data.default.owners@${partitionId}.contoso.com")),
        // Legal 
-       Row(Seq("projectosdu5543-opendes-public-usa-check-1"),
+       Row(Seq(s"${partitionId}-public-usa-check-1"),
            Seq("US")),
        // Data
-       Row("AustriaID", "Austria", Seq("Österreich", "Autriche"))
+       Row("Austria", "AustriaID", Seq("Österreich", "Autriche"))
     ))
 
     val df = sc.createDataFrame(sc.sparkContext.parallelize(rows), schema)
@@ -107,10 +162,11 @@ class VerifySourceReader extends AnyFunSuite {
 
     df.write
       .format("com.microsoft.spark.osdu")
+      .mode("append")
       .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
-      .option("osduApiEndpoint", "https://XXX.energy.azure.com")
-      .option("partitionId", "projectosdu5543-opendes")
-      .option("bearerToken", "YYY")
+      .option("osduApiEndpoint", osduApiEndpoint)
+      .option("partitionId", partitionId)
+      .option("bearerToken", getBearerToken)
       .save()
   }
 }

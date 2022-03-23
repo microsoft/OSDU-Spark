@@ -52,15 +52,25 @@ class OSDUScan(options: CaseInsensitiveStringMap, prunedSchema: Option[StructTyp
     OSDUSchemaConverter.toStruct(schema)
   }
 
+  override def toBatch: Batch = this
+
   override def readSchema(): StructType = prunedSchema.getOrElse(schemaForKind)
 
   override def planInputPartitions(): Array[InputPartition] = Array(new OSDUPartition())
 
-  override def createReaderFactory(): read.PartitionReaderFactory = new OSDUPartitionReaderFactory(options, readSchema)
+  override def createReaderFactory(): read.PartitionReaderFactory = 
+    new OSDUPartitionReaderFactory(
+      options.get("kind"),
+      options.get("query"),
+      options.get("osduApiEndpoint"),
+      options.get("partitionId"),
+      options.get("bearerToken"),
+      readSchema)
 }
 
 class OSDUPartition extends InputPartition
 
-class OSDUPartitionReaderFactory(options: CaseInsensitiveStringMap, prunedSchema: StructType) extends PartitionReaderFactory {
-  override def createReader(partition: InputPartition): PartitionReader[InternalRow] = new OSDUPartitionReader(options, prunedSchema)
+class OSDUPartitionReaderFactory(kind: String, query: String, osduApiEndpoint: String, partitionId: String, bearerToken: String, prunedSchema: StructType) extends PartitionReaderFactory {
+  override def createReader(partition: InputPartition): PartitionReader[InternalRow] = 
+    new OSDUPartitionReader(kind, query, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
 }

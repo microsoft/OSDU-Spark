@@ -18,11 +18,21 @@
 package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.connector.write.{BatchWrite, DataWriter, DataWriterFactory, LogicalWriteInfo, PhysicalWriteInfo, WriterCommitMessage}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.connector.write.{BatchWrite, Write, DataWriter, DataWriterFactory, LogicalWriteInfo, PhysicalWriteInfo, WriterCommitMessage}
 
-class OSDUWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends BatchWrite {
+class OSDUWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends Write {
+  override def toBatch(): BatchWrite = new OSDUBatchWrite(logicalInfo, pyhsicalInfo)
+}
+
+
+class OSDUBatchWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends BatchWrite {
   override def createBatchWriterFactory(info: PhysicalWriteInfo): DataWriterFactory
-  = new OSDUDataWriterFactory(logicalInfo, pyhsicalInfo)
+  = new OSDUDataWriterFactory(
+      logicalInfo.options.get("osduApiEndpoint"),
+      logicalInfo.options.get("partitionId"),
+      logicalInfo.options.get("bearerToken"),
+      logicalInfo.schema)
 
   override def commit(messages: Array[WriterCommitMessage]): Unit = {
   }
@@ -31,9 +41,9 @@ class OSDUWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) 
   }
 }
 
-class OSDUDataWriterFactory(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo)
+class OSDUDataWriterFactory(osduApiEndpoint: String, osduPartitionId: String, bearerToken: String, schema: StructType)
   extends DataWriterFactory {
 
   override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow] =
-    new OSDUDataWriter(logicalInfo, pyhsicalInfo)
+    new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
 }

@@ -27,14 +27,13 @@ import com.microsoft.osdu.client.invoker.{ApiClient}
 
 import scala.collection.JavaConverters._
 
-class OSDUDataWriter(info: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo)
+class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends DataWriter[InternalRow] {
 
-    private val schema = info.schema
     private val client = new ApiClient()
 
-    client.setBasePath(info.options.get("osduApiEndpoint"))
-    client.setBearerToken(info.options.get("bearerToken"))
+    client.setBasePath(osduApiEndpoint)
+    client.setBearerToken(bearerToken)
 
     private val storageApi = new StorageApi(client)
 
@@ -53,9 +52,10 @@ class OSDUDataWriter(info: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo)
     // private val idxLegalStatus = legalSchema.fieldIndex("status")
 
     private val idxData        = schema.fieldIndex("data")
-    private val dataSchemaNumFields = schema.fields(idxData).dataType.asInstanceOf[StructType].size
+    private val dataSchema     = schema.fields(idxData).dataType.asInstanceOf[StructType]
+    private val dataSchemaNumFields = dataSchema.size
 
-    private val converter = new OSDURecordConverter(schema)
+    private val converter = new OSDURecordConverter(dataSchema)
 
   def write(record: InternalRow): Unit = {
 
@@ -102,12 +102,14 @@ class OSDUDataWriter(info: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo)
         // .status(                    legal.getString(idxLegalStatus))
 
     // convert record to data
-    val data = converter.toJava(record.getStruct(idxData, dataSchemaNumFields))
+    val dataStruct = record.getStruct(idxData, dataSchemaNumFields)
+
+    val data = converter.toJava(dataStruct)
     storageRecord.setData(data)
 
     // up to 500
     val createOrUpdateRecord = storageApi.createOrUpdateRecords(
-      info.options().get("partitionId"),
+      partitionId,
       true /* skipdups */,
       "",
       Seq(storageRecord).asJava)

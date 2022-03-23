@@ -43,15 +43,8 @@ import com.microsoft.osdu.client.model.SearchCursorQueryRequest
   * @param schema The pruned schema of the data.
   */
 @SerialVersionUID(1L)
-class OSDUPartitionReader(options: CaseInsensitiveStringMap, schema: StructType)
+class OSDUPartitionReader(kind: String, query: String, osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends PartitionReader[InternalRow] with Serializable {
-
-  // TODO: refactor
-  private val kind = options.get("kind")
-  private val query = options.get("query")
-  private val osduApiEndpoint = options.get("osduApiEndpoint")
-  private val partitionId = options.get("partitionId")
-  private val bearerToken = options.get("bearerToken")
 
   private val logger = Logger.getLogger(classOf[OSDUPartitionReader])
 

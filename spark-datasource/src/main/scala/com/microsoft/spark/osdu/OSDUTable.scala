@@ -23,7 +23,7 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
 import java.util
 import org.apache.spark.sql.connector.read._
-import org.apache.spark.sql.connector.write.{BatchWrite, LogicalWriteInfo, PhysicalWriteInfo, WriteBuilder}
+import org.apache.spark.sql.connector.write.{Write, LogicalWriteInfo, PhysicalWriteInfo, WriteBuilder}
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import com.microsoft.osdu.client.api.SchemaApi
 import com.microsoft.osdu.client.invoker.ApiClient
@@ -63,7 +63,8 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], map: util.
     }
   }
 
-  override def capabilities(): util.Set[TableCapability] = Set(TableCapability.BATCH_READ, TableCapability.BATCH_WRITE).asJava
+  override def capabilities(): util.Set[TableCapability] = 
+    Set(TableCapability.BATCH_READ, TableCapability.BATCH_WRITE, TableCapability.ACCEPT_ANY_SCHEMA).asJava
 
   override def newScanBuilder(options: CaseInsensitiveStringMap): ScanBuilder = new OSDUScanBuilder(options)
 
@@ -85,5 +86,5 @@ class SimplePhysicalWriteInfo extends PhysicalWriteInfo {
 }
 
 class OSDUWriteBuilder(info: LogicalWriteInfo) extends WriteBuilder {
- override def buildForBatch(): BatchWrite = new OSDUWrite(info, new SimplePhysicalWriteInfo())
+ override def build(): Write = new OSDUWrite(info, new SimplePhysicalWriteInfo())
 }
