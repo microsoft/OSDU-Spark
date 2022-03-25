@@ -64,7 +64,11 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], map: util.
   }
 
   override def capabilities(): util.Set[TableCapability] = 
-    Set(TableCapability.BATCH_READ, TableCapability.BATCH_WRITE, TableCapability.ACCEPT_ANY_SCHEMA).asJava
+    Set(
+      TableCapability.BATCH_READ,
+      TableCapability.BATCH_WRITE,
+      TableCapability.STREAMING_WRITE,
+      TableCapability.ACCEPT_ANY_SCHEMA).asJava
 
   override def newScanBuilder(options: CaseInsensitiveStringMap): ScanBuilder = new OSDUScanBuilder(options)
 

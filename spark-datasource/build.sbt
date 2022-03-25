@@ -10,7 +10,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % sparkVersion % "compile",
   "org.apache.spark" %% "spark-sql" % sparkVersion % "compile",
   "org.scalatest" %% "scalatest" % "3.2.10" % "test",
-  "io.github.nur858" % "com-microsoft-osdu-api" % "0.0.3"
+  "io.github.nur858" % "com-microsoft-osdu-api" % "0.0.4"
 )
 
 resolvers += Resolver.mavenLocal

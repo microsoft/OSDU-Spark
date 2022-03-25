@@ -18,32 +18,49 @@
 package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.connector.write.streaming.{StreamingDataWriterFactory, StreamingWrite}
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.connector.write.{BatchWrite, Write, DataWriter, DataWriterFactory, LogicalWriteInfo, PhysicalWriteInfo, WriterCommitMessage}
+import org.apache.spark.sql.connector.write.{BatchWrite, DataWriter, DataWriterFactory, LogicalWriteInfo, PhysicalWriteInfo, Write, WriterCommitMessage}
 
 class OSDUWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends Write {
-  override def toBatch(): BatchWrite = new OSDUBatchWrite(logicalInfo, pyhsicalInfo)
+  override def toBatch(): BatchWrite = new OSDUBatchStreamWrite(logicalInfo, pyhsicalInfo)
+
+  override def toStreaming: StreamingWrite = new OSDUBatchStreamWrite(logicalInfo, pyhsicalInfo)
 }
 
 
-class OSDUBatchWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends BatchWrite {
-  override def createBatchWriterFactory(info: PhysicalWriteInfo): DataWriterFactory
-  = new OSDUDataWriterFactory(
+class OSDUBatchStreamWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends BatchWrite with StreamingWrite {
+  override def createStreamingWriterFactory(info: PhysicalWriteInfo): StreamingDataWriterFactory
+    = new OSDUDataWriterFactory(
       logicalInfo.options.get("osduApiEndpoint"),
       logicalInfo.options.get("partitionId"),
       logicalInfo.options.get("bearerToken"),
       logicalInfo.schema)
+
+  override def createBatchWriterFactory(info: PhysicalWriteInfo): DataWriterFactory
+    = new OSDUDataWriterFactory(
+        logicalInfo.options.get("osduApiEndpoint"),
+        logicalInfo.options.get("partitionId"),
+        logicalInfo.options.get("bearerToken"),
+        logicalInfo.schema)
 
   override def commit(messages: Array[WriterCommitMessage]): Unit = {
   }
 
   override def abort(messages: Array[WriterCommitMessage]): Unit = {
   }
+
+  override def commit(epochId: Long, messages: Array[WriterCommitMessage]): Unit = ???
+
+  override def abort(epochId: Long, messages: Array[WriterCommitMessage]): Unit = ???
 }
 
 class OSDUDataWriterFactory(osduApiEndpoint: String, osduPartitionId: String, bearerToken: String, schema: StructType)
-  extends DataWriterFactory {
+  extends DataWriterFactory with StreamingDataWriterFactory{
 
-  override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow] =
-    new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
+  override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow]
+    = new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
+
+  override def createWriter(partitionId: Int, taskId: Long, epochId: Long): DataWriter[InternalRow]
+    = new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
 }

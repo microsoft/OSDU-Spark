@@ -162,6 +162,41 @@ class VerifyOSDUSchemaConverter extends AnyFunSuite {
    assert(stripSchema(actual) == expected, "not equal schemas")
  }
 
+def isEqual(struct1: StructType, struct2: StructType): Boolean = {
+  // println(s"struct1: $struct1")
+  // println(s"struct2: $struct2")
+  struct1.headOption match {
+    case Some(field) => {
+      if(field.dataType.typeName != "struct") {
+        struct2.find(_ == field) match {
+         case Some(matchedField) => isEqual(StructType(struct1.filterNot(_.name == field.name)), StructType(struct2.filterNot(_.name == field.name)))
+         case None => {
+           println(s"Unable to find $field")
+          false
+         }
+        }
+      } else {
+        val isEqualContents = struct2.find(x => x.name == field.name && x.nullable == field.nullable && x.dataType.typeName == "struct") match {
+          case Some(matchedField) => isEqual(field.dataType.asInstanceOf[StructType], matchedField.dataType.asInstanceOf[StructType])
+          case None => { 
+            println(s"isEqualContents $field")
+            false
+          }
+        }
+        if(isEqualContents) isEqual(StructType(struct1.filterNot(_.name == field.name)), StructType(struct2.filterNot(_.name == field.name))) else {
+            println(s"isEqualContents 2 $field")
+          false
+        }
+      }
+    }
+    case None => { 
+      val r = struct2.size == 0
+      if(!r) println("Match none is false")
+      r
+    }
+  }
+}
+
  test("Schema OSDU GeoSchema") {
    implicit val formats = org.json4s.DefaultFormats
 
@@ -222,6 +257,6 @@ class VerifyOSDUSchemaConverter extends AnyFunSuite {
        true) ::
       Nil)
 
-   assert(stripSchema(actual) == expected, "not equal schemas")
+    assert(isEqual(expected, stripSchema(actual)), "not equal schemas")
  }
 }
