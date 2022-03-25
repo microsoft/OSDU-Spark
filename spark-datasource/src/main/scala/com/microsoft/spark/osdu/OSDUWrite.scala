@@ -34,14 +34,14 @@ class OSDUBatchStreamWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: Physical
     = new OSDUDataWriterFactory(
       logicalInfo.options.get("osduApiEndpoint"),
       logicalInfo.options.get("partitionId"),
-      logicalInfo.options.get("bearerToken"),
+      AuthUtil.getBearerToken(logicalInfo.options),
       logicalInfo.schema)
 
   override def createBatchWriterFactory(info: PhysicalWriteInfo): DataWriterFactory
     = new OSDUDataWriterFactory(
         logicalInfo.options.get("osduApiEndpoint"),
         logicalInfo.options.get("partitionId"),
-        logicalInfo.options.get("bearerToken"),
+        AuthUtil.getBearerToken(logicalInfo.options),
         logicalInfo.schema)
 
   override def commit(messages: Array[WriterCommitMessage]): Unit = {
@@ -50,9 +50,11 @@ class OSDUBatchStreamWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: Physical
   override def abort(messages: Array[WriterCommitMessage]): Unit = {
   }
 
-  override def commit(epochId: Long, messages: Array[WriterCommitMessage]): Unit = ???
+  override def commit(epochId: Long, messages: Array[WriterCommitMessage]): Unit = {
+  }
 
-  override def abort(epochId: Long, messages: Array[WriterCommitMessage]): Unit = ???
+  override def abort(epochId: Long, messages: Array[WriterCommitMessage]): Unit = {
+  }
 }
 
 class OSDUDataWriterFactory(osduApiEndpoint: String, osduPartitionId: String, bearerToken: String, schema: StructType)

@@ -1,4 +1,5 @@
-scalaVersion := "2.13.1"
+scalaVersion := "2.12.15" 
+// scalaVersion := "2.13.1"
 
 name := "OSDU Spark Connector"
 organization := "com.microsoft"

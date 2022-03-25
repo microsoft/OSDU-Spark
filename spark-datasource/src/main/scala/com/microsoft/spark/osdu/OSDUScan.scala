@@ -30,10 +30,11 @@ import java.util.Map
 class OSDUScan(options: CaseInsensitiveStringMap, prunedSchema: Option[StructType]) extends Scan with Batch {
 
   // TODO: refactor
+  private val query = options.get("query")
   private val kind = options.get("kind")
   private val osduApiEndpoint = options.get("osduApiEndpoint")
   private val partitionId = options.get("partitionId")
-  private val bearerToken = options.get("bearerToken")
+  private val bearerToken = AuthUtil.getBearerToken(options)
 
   private lazy val schemaForKind = {
     // setup REST client
@@ -60,11 +61,11 @@ class OSDUScan(options: CaseInsensitiveStringMap, prunedSchema: Option[StructTyp
 
   override def createReaderFactory(): read.PartitionReaderFactory = 
     new OSDUPartitionReaderFactory(
-      options.get("kind"),
-      options.get("query"),
-      options.get("osduApiEndpoint"),
-      options.get("partitionId"),
-      options.get("bearerToken"),
+      kind,
+      query,
+      osduApiEndpoint,
+      partitionId,
+      bearerToken,
       readSchema)
 }
 

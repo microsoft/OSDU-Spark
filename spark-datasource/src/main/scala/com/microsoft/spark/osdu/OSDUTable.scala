@@ -23,7 +23,7 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
 import java.util
 import org.apache.spark.sql.connector.read._
-import org.apache.spark.sql.connector.write.{Write, LogicalWriteInfo, PhysicalWriteInfo, WriteBuilder}
+import org.apache.spark.sql.connector.write.{LogicalWriteInfo, PhysicalWriteInfo, Write, WriteBuilder}
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import com.microsoft.osdu.client.api.SchemaApi
 import com.microsoft.osdu.client.invoker.ApiClient
@@ -38,7 +38,7 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], map: util.
   private val query = map.get("query")
   private val osduApiEndpoint = map.get("osduApiEndpoint")
   private val partitionId = map.get("partitionId")
-  private val bearerToken = map.get("bearerToken")
+  private val bearerToken = AuthUtil.getBearerToken(map)
 
   override def name(): String = kind
 
