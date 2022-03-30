@@ -98,53 +98,57 @@ class OSDURecordConverter(schema: StructType) {
    * @return The data for the internal row.
    */
   private def toSeq(nestedSchema: StructType, nestedData: Map[String, Object]): Seq[Any] = {
-    nestedSchema.fields.map {
-      field => {
-        val fieldData = nestedData.get(field.name)
+    if (nestedData == null)
+      Seq.empty
+    else {
+      nestedSchema.fields.map {
+        field => {
+          val fieldData = nestedData.get(field.name)
 
-        field.dataType match {
-          // primitive types
-          case DataTypes.StringType  => fieldData.asInstanceOf[String]
-          case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
-          case DataTypes.DoubleType  => fieldData.asInstanceOf[Double]
-          // complex types
-          case _ => {
-            if (field.dataType.isInstanceOf[StructType])
-              // Recurse into nested fields
-              // Nested records get their own internal row
-              InternalRow.fromSeq(
-                toSeq(
-                  field.dataType.asInstanceOf[StructType], 
-                  fieldData.asInstanceOf[Map[String, Object]]))
-            else if (field.dataType.isInstanceOf[ArrayType]) {
-              val arrType = field.dataType.asInstanceOf[ArrayType]
+          field.dataType match {
+            // primitive types
+            case DataTypes.StringType  => fieldData.asInstanceOf[String]
+            case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
+            case DataTypes.DoubleType  => fieldData.asInstanceOf[Double]
+            // complex types
+            case _ => {
+              if (field.dataType.isInstanceOf[StructType])
+                // Recurse into nested fields
+                // Nested records get their own internal row
+                InternalRow.fromSeq(
+                  toSeq(
+                    field.dataType.asInstanceOf[StructType],
+                    fieldData.asInstanceOf[Map[String, Object]]))
+              else if (field.dataType.isInstanceOf[ArrayType]) {
+                val arrType = field.dataType.asInstanceOf[ArrayType]
 
-              if (fieldData == null)
-                // Empty array
-                // TODO: all arrays are nullable, but passing null doesn't work
-                ArrayData.toArrayData(new Array[Any](0))
-              else {
-                // process array
-                val elems = fieldData.asInstanceOf[List[Any]].asScala.map {
-                  elem => {
-                    arrType.elementType match {
-                      // primitive types
-                      case DataTypes.StringType  => elem.asInstanceOf[String]
-                      case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
-                      case DataTypes.DoubleType  => elem.asInstanceOf[Double]
-                      // recurse into nested fields
-                      case _ => toSeq(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
+                if (fieldData == null)
+                  // Empty array
+                  // TODO: all arrays are nullable, but passing null doesn't work
+                  ArrayData.toArrayData(new Array[Any](0))
+                else {
+                  // process array
+                  val elems = fieldData.asInstanceOf[List[Any]].asScala.map {
+                    elem => {
+                      arrType.elementType match {
+                        // primitive types
+                        case DataTypes.StringType  => elem.asInstanceOf[String]
+                        case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
+                        case DataTypes.DoubleType  => elem.asInstanceOf[Double]
+                        // recurse into nested fields
+                        case _ => toSeq(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
+                      }
                     }
                   }
-                }
 
-                // create Spark SQL ArrayData
-                ArrayData.toArrayData(elems.toArray)
+                  // create Spark SQL ArrayData
+                  ArrayData.toArrayData(elems.toArray)
+                }
               }
+              else
+                // Fallback
+                fieldData.asInstanceOf[Any]
             }
-            else
-              // Fallback
-              fieldData.asInstanceOf[Any]
           }
         }
       }

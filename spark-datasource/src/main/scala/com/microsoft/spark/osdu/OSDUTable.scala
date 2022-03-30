@@ -31,16 +31,10 @@ import com.microsoft.osdu.client.invoker.ApiClient
 import scala.collection.JavaConverters._
 import java.util.Map
 
-class OSDUTable(structType: StructType, transforms: Array[Transform], map: util.Map[String, String])
+class OSDUTable(structType: StructType, transforms: Array[Transform], val query: String, osduOptions: OSDUOptions)
   extends Table with SupportsRead with SupportsWrite {
 
-  private val kind = map.get("kind")
-  private val query = map.get("query")
-  private val osduApiEndpoint = map.get("osduApiEndpoint")
-  private val partitionId = map.get("partitionId")
-  private val bearerToken = AuthUtil.getBearerToken(map)
-
-  override def name(): String = kind
+  override def name(): String = osduOptions.kind
 
   override def schema(): StructType = {
 
@@ -50,13 +44,13 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], map: util.
       // setup REST client
       val client = new ApiClient()
 
-      client.setBasePath(osduApiEndpoint)
-      client.setBearerToken(bearerToken)
+      client.setBasePath(osduOptions.osduApiEndpoint)
+      client.setBearerToken(osduOptions.getBearerToken)
 
       val schemaApi = new SchemaApi(client)
 
       // fetch OSDU schema from service
-      val schema = schemaApi.getSchema(partitionId, kind).asInstanceOf[Map[String, Object]]
+      val schema = schemaApi.getSchema(osduOptions.partitionId, osduOptions.kind).asInstanceOf[Map[String, Object]]
 
       // convert OSDU schema to Spark SQL schema
       OSDUSchemaConverter.toStruct(schema)
@@ -70,7 +64,17 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], map: util.
       TableCapability.STREAMING_WRITE,
       TableCapability.ACCEPT_ANY_SCHEMA).asJava
 
-  override def newScanBuilder(options: CaseInsensitiveStringMap): ScanBuilder = new OSDUScanBuilder(options)
+  override def newScanBuilder(options: CaseInsensitiveStringMap): ScanBuilder = {
+    val newOptions = new java.util.HashMap[String, String]
+    newOptions.put("osduApiEndpoint", osduOptions.osduApiEndpoint)
+    newOptions.put("partitionId", osduOptions.partitionId)
+    newOptions.put("bearerToken", osduOptions.getBearerToken)
+    newOptions.put("kind", osduOptions.kind)
+
+    newOptions.putAll(options)
+
+    new OSDUScanBuilder(new CaseInsensitiveStringMap(newOptions))
+  }
 
   override def newWriteBuilder(info: LogicalWriteInfo): WriteBuilder = new OSDUWriteBuilder(info)
 }

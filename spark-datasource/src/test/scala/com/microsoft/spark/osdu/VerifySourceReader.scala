@@ -31,16 +31,23 @@ class VerifySourceReader extends AnyFunSuite {
   val tenantId = ""
   val clientId = ""
   val clientSecret = ""
-
   val partitionId = ""
-  val osduApiEndpoint = "https://"
+  val osduApiEndpoint = ""
+
+  val oauthEndpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/token"
+
+  // val tenantId = ""
+  // val clientId = ""
+  // val clientSecret = ""
+
+  // val partitionId = ""
+  // val osduApiEndpoint = "https://"
 
   def getBearerToken(): String = { 
     val clientSecretEncoded = URLEncoder.encode(clientSecret,"UTF-8")
 
-    val endpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/token"
     val postBody = s"grant_type=client_credentials&client_id=$clientId&client_secret=$clientSecretEncoded&resource=$clientId"
-    val conn = new URL(endpoint).openConnection.asInstanceOf[HttpURLConnection]
+    val conn = new URL(oauthEndpoint).openConnection.asInstanceOf[HttpURLConnection]
     conn.setRequestMethod("POST")
     conn.addRequestProperty("Content-Type", "application/x-www-form-urlencoded")
     conn.setDoOutput(true)
@@ -51,6 +58,48 @@ class VerifySourceReader extends AnyFunSuite {
     val response = new ObjectMapper().readValue[java.util.Map[String, String]](responseJson, classOf[java.util.Map[String, String]])
 
     response.get("access_token")
+  }
+
+  test("OSDU Catalog") {
+    val conf = new SparkConf()
+      .setMaster("local") // local instance
+      .setAppName("OSDUIntegrationTest")
+      .set("spark.sql.catalog.osdu1", "com.microsoft.spark.osdu.OSDUCatalog")
+      .set("spark.sql.catalog.osdu1.osduApiEndpoint", osduApiEndpoint)
+      .set("spark.sql.catalog.osdu1.partitionId", partitionId)
+      .set("spark.sql.catalog.osdu1.bearerToken", getBearerToken())
+
+    val sc = SparkSession.builder().config(conf).getOrCreate()
+
+//    sc.conf.
+//    sc.conf.set
+//    sc.conf.set("spark.sql.catalog.osdu.spark.cosmos.accountKey", cosmosMasterKey)
+//    println(sc.sessionState.catalogManager.isCatalogRegistered("osdu"))
+//    sc.sessionState.catalogManager.setCurrentCatalog("osdu")
+//
+//    println(sc.sessionState.catalogManager.currentCatalog.name())
+//    println(sc.sessionState.catalogManager.currentCatalog.getClass)
+//    println("namespace")
+//    println(sc.sessionState.catalogManager.currentCatalog.defaultNamespace().mkString(":"))
+//    sc.catalog.setCurrentDatabase("foooobar")
+//
+//    println(s"Current database: ${sc.catalog.currentDatabase}")
+//
+//    val tables = sc.catalog.listTables()
+//    tables.show()
+//
+//    sc.table("foobar").show()
+//    sc.sql("SELECT * FROM `osdu.db.master-data--GeoPoliticalEntity`").show()
+    // osdu:wks:master-data--GeoPoliticalEntity
+
+    // sc.sql("SHOW TABLES FROM osdu").show()
+    sc.sql("SHOW TABLES FROM osdu1.osdu.wks").show()
+
+    val df = sc.sql("SELECT * FROM osdu1.osdu.wks.`master-data--GeoPoliticalEntity:1.0.0`")
+
+    df.printSchema()
+
+    df.show()
   }
 
   test("OSDU to Spark") {
@@ -66,7 +115,10 @@ class VerifySourceReader extends AnyFunSuite {
         .option("query", "")
         .option("osduApiEndpoint", osduApiEndpoint)
         .option("partitionId", partitionId)
-        .option("bearerToken", getBearerToken)
+        // .option("bearerToken", getBearerToken)
+        .option("clientId", clientId)
+        .option("clientSecret", clientSecret)
+        .option("oauthEndpoint", oauthEndpoint)
         .load
         // .select("id", "kind", "data.GeoPoliticalEntityID")
 
