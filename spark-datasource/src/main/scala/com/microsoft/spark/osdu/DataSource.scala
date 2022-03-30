@@ -75,7 +75,7 @@ class OSDUIdentifier(options: CaseInsensitiveStringMap) extends Identifier {
   // Sample: osdu:wks:master-data--GeoPoliticalEntity:1.0.0"
   override def namespace(): Array[String] = kindParts.slice(0, 2)
 
-  override def name(): String = kindParts.slice(2,3).mkString(":")
+  override def name(): String = kindParts.slice(2, kindParts.length).mkString(":")
 
   val optionsAsHashMap = options
 }

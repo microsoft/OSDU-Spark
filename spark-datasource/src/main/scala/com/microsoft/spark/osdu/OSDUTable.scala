@@ -65,6 +65,8 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], val query:
       TableCapability.ACCEPT_ANY_SCHEMA).asJava
 
   override def newScanBuilder(options: CaseInsensitiveStringMap): ScanBuilder = {
+    // propagate credentials
+
     val newOptions = new java.util.HashMap[String, String]
     newOptions.put("osduApiEndpoint", osduOptions.osduApiEndpoint)
     newOptions.put("partitionId", osduOptions.partitionId)
