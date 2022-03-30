@@ -20,13 +20,19 @@ package com.microsoft.spark.osdu
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types._
 import org.apache.log4j.Logger
-import java.util.{ArrayList, Map, List, UUID}
+
+import java.util.{ArrayList, List, Map}
 import scala.collection.JavaConverters._
 import org.apache.spark.unsafe.types.UTF8String
 import org.apache.spark.sql.catalyst.util.ArrayData
 
+import java.text.SimpleDateFormat
+
+
 /** Convert OSDU schema to Spark SQL schema. */
 class OSDURecordConverter(schema: StructType) {
+  private val simpleDataFormatter = new SimpleDateFormat("YYYY-MM-DD")
+
   private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
   /** Extracts the fields from the current OSDU record.
@@ -110,6 +116,7 @@ class OSDURecordConverter(schema: StructType) {
             case DataTypes.StringType  => fieldData.asInstanceOf[String]
             case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
             case DataTypes.DoubleType  => fieldData.asInstanceOf[Double]
+            case DataTypes.DateType => simpleDataFormatter.parse(fieldData.asInstanceOf[String])
             // complex types
             case _ => {
               if (field.dataType.isInstanceOf[StructType])
@@ -135,6 +142,7 @@ class OSDURecordConverter(schema: StructType) {
                         case DataTypes.StringType  => elem.asInstanceOf[String]
                         case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
                         case DataTypes.DoubleType  => elem.asInstanceOf[Double]
+                        case DataTypes.DateType => simpleDataFormatter.parse(fieldData.asInstanceOf[String])
                         // recurse into nested fields
                         case _ => toSeq(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
                       }

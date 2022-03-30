@@ -53,7 +53,7 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], val query:
       val schema = schemaApi.getSchema(osduOptions.partitionId, osduOptions.kind).asInstanceOf[Map[String, Object]]
 
       // convert OSDU schema to Spark SQL schema
-      OSDUSchemaConverter.toStruct(schema)
+      OSDUSchemaConverter.toDataType(schema).asInstanceOf[StructType]
     }
   }
 

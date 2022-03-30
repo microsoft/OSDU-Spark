@@ -50,12 +50,12 @@ class OSDUScan(options: CaseInsensitiveStringMap, prunedSchema: Option[StructTyp
     val schema = schemaApi.getSchema(partitionId, kind).asInstanceOf[Map[String, Object]]
 
     // convert OSDU schema to Spark SQL schema
-    OSDUSchemaConverter.toStruct(schema)
+    OSDUSchemaConverter.toDataType(schema)
   }
 
   override def toBatch: Batch = this
 
-  override def readSchema(): StructType = prunedSchema.getOrElse(schemaForKind)
+  override def readSchema(): StructType = prunedSchema.getOrElse(schemaForKind).asInstanceOf[StructType]
 
   override def planInputPartitions(): Array[InputPartition] = Array(new OSDUPartition())
 
@@ -72,6 +72,10 @@ class OSDUScan(options: CaseInsensitiveStringMap, prunedSchema: Option[StructTyp
 class OSDUPartition extends InputPartition
 
 class OSDUPartitionReaderFactory(kind: String, query: String, osduApiEndpoint: String, partitionId: String, bearerToken: String, prunedSchema: StructType) extends PartitionReaderFactory {
-  override def createReader(partition: InputPartition): PartitionReader[InternalRow] = 
-    new OSDUPartitionReader(kind, query, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
+  override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
+//     if (query == null || query.length == 0 || query.equals("*"))
+//       new OSDUPartitionReader(kind, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
+//     else
+      new OSDUPartitionReaderFiltered(kind, query, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
+  }
 }
