@@ -31,7 +31,7 @@ import java.text.SimpleDateFormat
 
 /** Convert OSDU schema to Spark SQL schema. */
 class OSDURecordConverter(schema: StructType) {
-  private val simpleDataFormatter = new SimpleDateFormat("YYYY-MM-DD")
+  private val simpleDataFormatter = new SimpleDateFormat("yyyy-MM-dd")
 
   private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
@@ -50,48 +50,52 @@ class OSDURecordConverter(schema: StructType) {
     for (i <- 0 until row.numFields) {
       val fieldDataType = nestedSchema.fields(i).dataType
 
-      if (fieldDataType.isInstanceOf[ArrayType]) {
-        // handle arrays
-        val elementType = nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType
-        
-        val list = new ArrayList[Object]()
-        val array = row.getArray(i).asInstanceOf[ArrayData]
+      if (!row.isNullAt(i)) {
+        if (fieldDataType.isInstanceOf[ArrayType]) {
+          // handle arrays
+          val elementType = nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType
 
-        if (elementType.isInstanceOf[StructType]) {
-          // handle structs in arrays
-          val elementTypeAsStruct = elementType.asInstanceOf[StructType]
+          val list = new ArrayList[Object]()
+          val array = row.getArray(i).asInstanceOf[ArrayData]
 
-          for (j <- 0 until array.numElements()) {
-            list.add(
-              toJava(
-                array.getStruct(j, elementTypeAsStruct.size),
-                elementTypeAsStruct))
-          }
-          map.put(nestedSchema.fields(i).name, list)
-        }
-        else {
-          // handle all other types
-          if (array != null) {
-            for (j <- 0 until array.numElements())
-              list.add(array.get(j, nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType))
-            
+          if (elementType.isInstanceOf[StructType]) {
+            // handle structs in arrays
+            val elementTypeAsStruct = elementType.asInstanceOf[StructType]
+
+            for (j <- 0 until array.numElements()) {
+              list.add(
+                toJava(
+                  array.getStruct(j, elementTypeAsStruct.size),
+                  elementTypeAsStruct))
+            }
             map.put(nestedSchema.fields(i).name, list)
           }
+          else {
+            // handle all other types
+            if (array != null) {
+              for (j <- 0 until array.numElements())
+                list.add(array.get(j, nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType))
+
+              map.put(nestedSchema.fields(i).name, list)
+            }
+          }
         }
-      }
-      else if (fieldDataType.isInstanceOf[StructType]) {
-        // handle nested structs and recurse
-        map.put(
+        else if (fieldDataType.isInstanceOf[StructType]) {
+          // handle nested structs and recurse
+          map.put(
             nestedSchema.fields(i).name,
             toJava(
               row.getStruct(
                 i,
                 nestedSchema.fields(i).dataType.asInstanceOf[StructType].size),
               nestedSchema.fields(i).dataType.asInstanceOf[StructType]))
-      }
-      else
+        }
+        else if (fieldDataType.isInstanceOf[DateType])
+          map.put(nestedSchema.fields(i).name, simpleDataFormatter.format(row.get(i, fieldDataType).asInstanceOf[java.util.Date]))
+        else
         // handle primitive types
-        map.put(nestedSchema.fields(i).name, row.get(i, fieldDataType))
+          map.put(nestedSchema.fields(i).name, row.get(i, fieldDataType))
+      }
     }
 
     map
@@ -129,7 +133,10 @@ class OSDURecordConverter(schema: StructType) {
             case DataTypes.DoubleType => numberToDouble(fieldData)
             case DataTypes.FloatType => numberToDouble(fieldData).toFloat
             case DataTypes.ShortType => numberToDouble(fieldData).toInt
-            case DataTypes.DateType => simpleDataFormatter.parse(fieldData.asInstanceOf[String])
+            case DataTypes.DateType => Option(fieldData.asInstanceOf[String]) match {
+              case Some(s) => simpleDataFormatter.parse(s)
+              case _ => null
+            }
             // complex types
             case _ => {
               if (field.dataType.isInstanceOf[StructType])
@@ -160,7 +167,10 @@ class OSDURecordConverter(schema: StructType) {
                         case DataTypes.DoubleType => numberToDouble(elem)
                         case DataTypes.FloatType => numberToDouble(elem).toFloat
                         case DataTypes.ShortType => numberToDouble(elem).toInt
-                        case DataTypes.DateType => simpleDataFormatter.parse(elem.asInstanceOf[String])
+                        case DataTypes.DateType => Option(elem.asInstanceOf[String]) match {
+                          case Some(s) => simpleDataFormatter.parse(s)
+                          case _ => null
+                        }
                         // recurse into nested fields
                         case _ => toSeq(elem.asInstanceOf[StructType], elem.asInstanceOf[Map[String, Object]])
                       }

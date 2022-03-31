@@ -22,9 +22,10 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.util.ArrayData
 
 import scala.collection.JavaConverters._
-
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.funsuite.AnyFunSuite
+
+import java.time.{LocalDate, LocalTime, ZoneId}
 
 class VerifyOSDURecordConverter extends AnyFunSuite {
   test("Primitive Types") {
@@ -71,6 +72,57 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
     val actual = new OSDURecordConverter(schema).toJava(row)
 
     assert(actual == expected)
+  }
+
+  test("Date Type") {
+    val schema = StructType(
+      StructField("a", DataTypes.DateType) ::
+      StructField("b", DataTypes.DateType) ::
+        Nil)
+
+    val data =  Map("a" -> "2022-01-03", "b" -> null)
+      .asJava
+      .asInstanceOf[java.util.Map[String, Object]]
+
+    val row = InternalRow.fromSeq(Seq(
+      java.util.Date.from(LocalDate.of(2022, 1, 3)
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant()),
+      null))
+
+    val converter = new OSDURecordConverter(schema)
+
+    val actualRow = converter.toInternalRow(data)
+
+    assert(actualRow == row)
+  }
+
+  test("Date Type Deserialize") {
+    val schema = StructType(
+      StructField("a", DataTypes.DateType) ::
+        StructField("b", DataTypes.DateType) ::
+        Nil)
+
+    val data =  Map("a" -> "2022-01-03", "b" -> null)
+      .asJava
+      .asInstanceOf[java.util.Map[String, Object]]
+
+    val dataExpected =  Map("a" -> "2022-01-03")
+      .asJava
+      .asInstanceOf[java.util.Map[String, Object]]
+
+    val row = InternalRow.fromSeq(Seq(
+      java.util.Date.from(LocalDate.of(2022, 1, 3)
+        .atStartOfDay()
+        .atZone(ZoneId.systemDefault())
+        .toInstant()),
+      null))
+
+    val converter = new OSDURecordConverter(schema)
+
+    val actualData = converter.toJava(row)
+    assert(actualData == dataExpected)
   }
 
   test("Nested Types") {
