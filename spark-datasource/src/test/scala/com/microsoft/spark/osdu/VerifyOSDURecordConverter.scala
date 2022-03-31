@@ -19,7 +19,7 @@ package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.util.ArrayData
+import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, ArrayData}
 
 import scala.collection.JavaConverters._
 import org.scalatest.matchers.should.Matchers._
@@ -123,6 +123,28 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
 
     val actualData = converter.toJava(row)
     assert(actualData == dataExpected)
+  }
+
+  test("Map") {
+    val schema = StructType(
+      StructField("a", MapType(StringType, StringType, false)) :: Nil)
+
+    val data =  Map("a" -> Map("x" -> "abc", "y" -> "def").asJava)
+      .asJava
+      .asInstanceOf[java.util.Map[String, Object]]
+
+    val converter = new OSDURecordConverter(schema)
+    val row = InternalRow.fromSeq(Seq(ArrayBasedMapData.apply(Map(
+      "x" -> "abc",
+      "y" -> "def"
+    ))))
+
+    val actualRow = converter.toInternalRow(data)
+    val actualData = converter.toJava(row)
+
+    assert(actualData == data)
+    assert(actualRow.getMap(0).keyArray() == row.getMap(0).keyArray())
+    assert(actualRow.getMap(0).valueArray() == row.getMap(0).valueArray())
   }
 
   test("Nested Types") {

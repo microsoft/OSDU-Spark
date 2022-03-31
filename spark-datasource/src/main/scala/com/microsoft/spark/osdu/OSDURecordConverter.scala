@@ -24,7 +24,7 @@ import org.apache.log4j.Logger
 import java.util.{ArrayList, List, Map}
 import scala.collection.JavaConverters._
 import org.apache.spark.unsafe.types.UTF8String
-import org.apache.spark.sql.catalyst.util.ArrayData
+import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, ArrayData, MapData}
 
 import java.text.SimpleDateFormat
 
@@ -56,7 +56,7 @@ class OSDURecordConverter(schema: StructType) {
           val elementType = nestedSchema.fields(i).dataType.asInstanceOf[ArrayType].elementType
 
           val list = new ArrayList[Object]()
-          val array = row.getArray(i).asInstanceOf[ArrayData]
+          val array = row.getArray(i)
 
           if (elementType.isInstanceOf[StructType]) {
             // handle structs in arrays
@@ -92,6 +92,16 @@ class OSDURecordConverter(schema: StructType) {
         }
         else if (fieldDataType.isInstanceOf[DateType])
           map.put(nestedSchema.fields(i).name, simpleDataFormatter.format(row.get(i, fieldDataType).asInstanceOf[java.util.Date]))
+        else if(fieldDataType.isInstanceOf[MapType]) {
+          // convert to java map
+          val sparkMap = row.getMap(i)
+
+          map.put(
+            nestedSchema.fields(i).name,
+            ArrayBasedMapData.toJavaMap(
+              sparkMap.keyArray().array,
+              sparkMap.valueArray().array))
+        }
         else
         // handle primitive types
           map.put(nestedSchema.fields(i).name, row.get(i, fieldDataType))
@@ -147,7 +157,10 @@ class OSDURecordConverter(schema: StructType) {
                     field.dataType.asInstanceOf[StructType],
                     fieldData.asInstanceOf[Map[String, Object]]))
               else if (field.dataType.isInstanceOf[MapType])
-                fieldData.asInstanceOf[Map[String, Object]]
+                ArrayBasedMapData.apply(
+                  fieldData.asInstanceOf[java.util.Map[String, Object]],
+                  k => k.toString,
+                  v => v.toString)
               else if (field.dataType.isInstanceOf[ArrayType]) {
                 val arrType = field.dataType.asInstanceOf[ArrayType]
 
