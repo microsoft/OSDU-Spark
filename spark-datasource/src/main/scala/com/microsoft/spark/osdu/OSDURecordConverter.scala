@@ -97,6 +97,16 @@ class OSDURecordConverter(schema: StructType) {
     map
   }
 
+  private def numberToDouble(x: Any): Double = {
+    x match {
+      case d: Double => d
+      case i: Int => i.toDouble
+      case l: Long => l.toDouble
+      case f: Float => f.toDouble
+      case s: Short => s.toDouble
+    }
+  }
+
   /** Extracts the fields from the current OSDU record.
    *
    * @param nestedSchema The Spark SQL schema to follow.
@@ -114,8 +124,11 @@ class OSDURecordConverter(schema: StructType) {
           field.dataType match {
             // primitive types
             case DataTypes.StringType  => fieldData.asInstanceOf[String]
-            case DataTypes.IntegerType => fieldData.asInstanceOf[Double].toInt
-            case DataTypes.DoubleType  => fieldData.asInstanceOf[Double]
+            case DataTypes.IntegerType => numberToDouble(fieldData).toInt
+            case DataTypes.LongType => numberToDouble(fieldData).toLong
+            case DataTypes.DoubleType => numberToDouble(fieldData)
+            case DataTypes.FloatType => numberToDouble(fieldData).toFloat
+            case DataTypes.ShortType => numberToDouble(fieldData).toInt
             case DataTypes.DateType => simpleDataFormatter.parse(fieldData.asInstanceOf[String])
             // complex types
             case _ => {
@@ -126,6 +139,8 @@ class OSDURecordConverter(schema: StructType) {
                   toSeq(
                     field.dataType.asInstanceOf[StructType],
                     fieldData.asInstanceOf[Map[String, Object]]))
+              else if (field.dataType.isInstanceOf[MapType])
+                fieldData.asInstanceOf[Map[String, Object]]
               else if (field.dataType.isInstanceOf[ArrayType]) {
                 val arrType = field.dataType.asInstanceOf[ArrayType]
 
@@ -140,11 +155,14 @@ class OSDURecordConverter(schema: StructType) {
                       arrType.elementType match {
                         // primitive types
                         case DataTypes.StringType  => elem.asInstanceOf[String]
-                        case DataTypes.IntegerType => elem.asInstanceOf[Double].toInt
-                        case DataTypes.DoubleType  => elem.asInstanceOf[Double]
-                        case DataTypes.DateType => simpleDataFormatter.parse(fieldData.asInstanceOf[String])
+                        case DataTypes.IntegerType => numberToDouble(elem).toInt
+                        case DataTypes.LongType => numberToDouble(elem).toLong
+                        case DataTypes.DoubleType => numberToDouble(elem)
+                        case DataTypes.FloatType => numberToDouble(elem).toFloat
+                        case DataTypes.ShortType => numberToDouble(elem).toInt
+                        case DataTypes.DateType => simpleDataFormatter.parse(elem.asInstanceOf[String])
                         // recurse into nested fields
-                        case _ => toSeq(elem.asInstanceOf[StructType], fieldData.asInstanceOf[Map[String, Object]])
+                        case _ => toSeq(elem.asInstanceOf[StructType], elem.asInstanceOf[Map[String, Object]])
                       }
                     }
                   }

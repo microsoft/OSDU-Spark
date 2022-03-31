@@ -57,15 +57,17 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
     val schema = StructType(
         StructField("a", DataTypes.IntegerType) ::
         StructField("b", DataTypes.DoubleType) ::
+        StructField("d", DataTypes.DoubleType) ::
         StructField("c", DataTypes.StringType) :: Nil)
 
     val expected =  Map("a" -> 1,
                         "b" -> 2.3,
+                        "d" -> 3000000L,
                         "c" -> "str")
                         .asJava
                         .asInstanceOf[java.util.Map[String, Object]]
 
-    val row = InternalRow.fromSeq(Seq(1, 2.3, "str"))
+    val row = InternalRow.fromSeq(Seq(1, 2.3, 3000000L, "str"))
     val actual = new OSDURecordConverter(schema).toJava(row)
 
     assert(actual == expected)
