@@ -34,7 +34,7 @@ import java.time.temporal.ChronoUnit
 /** Convert OSDU schema to Spark SQL schema. */
 class OSDURecordConverter(schema: StructType) {
   private val epoch = LocalDate.ofEpochDay(0)
-  private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
+  private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd['T'HH:mm:ssZ]")
 
   private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
@@ -92,9 +92,10 @@ class OSDURecordConverter(schema: StructType) {
                 nestedSchema.fields(i).dataType.asInstanceOf[StructType].size),
               nestedSchema.fields(i).dataType.asInstanceOf[StructType]))
         }
-        else if (fieldDataType.isInstanceOf[DateType])
-          map.put(nestedSchema.fields(i).name, LocalDate.ofEpochDay(row.getInt(i)).format(dateFormat))
-//        else if (fieldDataType.isInstanceOf[TimestampType])
+        else if (fieldDataType.isInstanceOf[DateType]) {
+          map.put(nestedSchema.fields(i).name, LocalDate.ofEpochDay(row.getInt(i)).atStartOfDay().format(dateFormat))
+        }
+        //        else if (fieldDataType.isInstanceOf[TimestampType])
 //          map.put(nestedSchema.fields(i).name, (row.getLong(i))))
         else if(fieldDataType.isInstanceOf[MapType]) {
           // convert to java map
@@ -141,11 +142,10 @@ class OSDURecordConverter(schema: StructType) {
 
           if (fieldData == null) {
             // TODO: this could benefit from a good amount of unit testing
-            if (field.dataType.isInstanceOf[StructType])
-              null
-            else if (field.dataType.isInstanceOf[ArrayType])
-              null
-            else if (field.dataType.isInstanceOf[MapType])
+            if (field.dataType.isInstanceOf[StructType] ||
+                field.dataType.isInstanceOf[ArrayType] ||
+                field.dataType.isInstanceOf[MapType] ||
+                field.dataType.isInstanceOf[DateType])
               null
               //new ArrayBasedMapData(ArrayData.toArrayData(Array.empty), ArrayData.toArrayData(Array.empty))
             else
@@ -161,7 +161,7 @@ class OSDURecordConverter(schema: StructType) {
               case DataTypes.ShortType => numberToDouble(fieldData).toInt
 //              case DataTypes.TimestampType => TODO: return long here
               case DataTypes.DateType => Option(fieldData.asInstanceOf[String]) match {
-                case Some(s) => ChronoUnit.DAYS.between(epoch,  LocalDate.parse(s, dateFormat)).toInt
+                case Some(s) => ChronoUnit.DAYS.between(epoch, LocalDate.parse(s, dateFormat)).toInt
                 case _ => null
               }
               // complex types
