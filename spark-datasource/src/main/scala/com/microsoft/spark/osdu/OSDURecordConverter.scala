@@ -24,14 +24,17 @@ import org.apache.log4j.Logger
 import java.util.{ArrayList, List, Map}
 import scala.collection.JavaConverters._
 import org.apache.spark.unsafe.types.UTF8String
-import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, ArrayData, MapData}
+import org.apache.spark.sql.catalyst.util.{ArrayBasedMapData, ArrayData}
 
-import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 
 /** Convert OSDU schema to Spark SQL schema. */
 class OSDURecordConverter(schema: StructType) {
-  private val simpleDataFormatter = new SimpleDateFormat("yyyy-MM-dd")
+  private val epoch = LocalDate.ofEpochDay(0)
+  private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ")
 
   private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
@@ -44,7 +47,6 @@ class OSDURecordConverter(schema: StructType) {
 
   def toJava(row: InternalRow): Map[String, Object] = toJava(row, schema)
 
-  // private def toSeq(nestedSchema: StructType, nestedData: Map[String, Object]): Seq[Any] = {
   private def toJava(row: InternalRow, nestedSchema: StructType): Map[String, Object] = {
     val map = new java.util.HashMap[String, Object]()
     for (i <- 0 until row.numFields) {
@@ -91,7 +93,9 @@ class OSDURecordConverter(schema: StructType) {
               nestedSchema.fields(i).dataType.asInstanceOf[StructType]))
         }
         else if (fieldDataType.isInstanceOf[DateType])
-          map.put(nestedSchema.fields(i).name, simpleDataFormatter.format(row.get(i, fieldDataType).asInstanceOf[java.util.Date]))
+          map.put(nestedSchema.fields(i).name, LocalDate.ofEpochDay(row.getInt(i)).format(dateFormat))
+//        else if (fieldDataType.isInstanceOf[TimestampType])
+//          map.put(nestedSchema.fields(i).name, (row.getLong(i))))
         else if(fieldDataType.isInstanceOf[MapType]) {
           // convert to java map
           val sparkMap = row.getMap(i)
@@ -135,53 +139,64 @@ class OSDURecordConverter(schema: StructType) {
         field => {
           val fieldData = nestedData.get(field.name)
 
-          field.dataType match {
-            // primitive types
-            case DataTypes.StringType  => fieldData.asInstanceOf[String]
-            case DataTypes.IntegerType => numberToDouble(fieldData).toInt
-            case DataTypes.LongType => numberToDouble(fieldData).toLong
-            case DataTypes.DoubleType => numberToDouble(fieldData)
-            case DataTypes.FloatType => numberToDouble(fieldData).toFloat
-            case DataTypes.ShortType => numberToDouble(fieldData).toInt
-            case DataTypes.DateType => Option(fieldData.asInstanceOf[String]) match {
-              case Some(s) => simpleDataFormatter.parse(s)
-              case _ => null
-            }
-            // complex types
-            case _ => {
-              if (field.dataType.isInstanceOf[StructType])
+          if (fieldData == null) {
+            // TODO: this could benefit from a good amount of unit testing
+            if (field.dataType.isInstanceOf[StructType])
+              null
+            else if (field.dataType.isInstanceOf[ArrayType])
+              null
+            else if (field.dataType.isInstanceOf[MapType])
+              null
+              //new ArrayBasedMapData(ArrayData.toArrayData(Array.empty), ArrayData.toArrayData(Array.empty))
+            else
+              Seq.empty
+          } else {
+            field.dataType match {
+              // primitive types
+              case DataTypes.StringType => UTF8String.fromString(fieldData.asInstanceOf[String])
+              case DataTypes.IntegerType => numberToDouble(fieldData).toInt
+              case DataTypes.LongType => numberToDouble(fieldData).toLong
+              case DataTypes.DoubleType => numberToDouble(fieldData)
+              case DataTypes.FloatType => numberToDouble(fieldData).toFloat
+              case DataTypes.ShortType => numberToDouble(fieldData).toInt
+//              case DataTypes.TimestampType => TODO: return long here
+              case DataTypes.DateType => Option(fieldData.asInstanceOf[String]) match {
+                case Some(s) => ChronoUnit.DAYS.between(epoch,  LocalDate.parse(s, dateFormat)).toInt
+                case _ => null
+              }
+              // complex types
+              case _ => {
+                if (field.dataType.isInstanceOf[StructType])
                 // Recurse into nested fields
                 // Nested records get their own internal row
-                InternalRow.fromSeq(
-                  toSeq(
-                    field.dataType.asInstanceOf[StructType],
-                    fieldData.asInstanceOf[Map[String, Object]]))
-              else if (field.dataType.isInstanceOf[MapType])
-                ArrayBasedMapData.apply(
-                  fieldData.asInstanceOf[java.util.Map[String, Object]],
-                  k => k.toString,
-                  v => v.toString)
-              else if (field.dataType.isInstanceOf[ArrayType]) {
-                val arrType = field.dataType.asInstanceOf[ArrayType]
+                  InternalRow.fromSeq(
+                    toSeq(
+                      field.dataType.asInstanceOf[StructType],
+                      fieldData.asInstanceOf[Map[String, Object]]))
+                else if (field.dataType.isInstanceOf[MapType])
+                  ArrayBasedMapData.apply(
+                    fieldData.asInstanceOf[java.util.Map[String, Object]],
+                    k => UTF8String.fromString(k.toString),
+                    v => if (v != null) UTF8String.fromString(v.toString) else null)
+                else if (field.dataType.isInstanceOf[ArrayType]) {
+                  val arrType = field.dataType.asInstanceOf[ArrayType]
 
-                if (fieldData == null)
-                  // Empty array
-                  // TODO: all arrays are nullable, but passing null doesn't work
-                  ArrayData.toArrayData(new Array[Any](0))
-                else {
                   // process array
                   val elems = fieldData.asInstanceOf[List[Any]].asScala.map {
                     elem => {
                       arrType.elementType match {
                         // primitive types
-                        case DataTypes.StringType  => elem.asInstanceOf[String]
+                        case DataTypes.StringType => UTF8String.fromString(elem.asInstanceOf[String])
                         case DataTypes.IntegerType => numberToDouble(elem).toInt
                         case DataTypes.LongType => numberToDouble(elem).toLong
                         case DataTypes.DoubleType => numberToDouble(elem)
                         case DataTypes.FloatType => numberToDouble(elem).toFloat
                         case DataTypes.ShortType => numberToDouble(elem).toInt
                         case DataTypes.DateType => Option(elem.asInstanceOf[String]) match {
-                          case Some(s) => simpleDataFormatter.parse(s)
+                          // Internally, a date is stored as a simple incrementing count of days
+                          // where day 0 is 1970-01-01. Negative numbers represent earlier days.
+                          // https://github.com/apache/spark/blob/09b789a17efc6788176debd1925ff0fb78910e9f/sql/catalyst/src/main/scala/org/apache/spark/sql/types/DateType.scala#L35
+                          case Some(s) => ChronoUnit.DAYS.between(epoch,  LocalDate.parse(s, dateFormat)).toInt
                           case _ => null
                         }
                         // recurse into nested fields
@@ -193,10 +208,10 @@ class OSDURecordConverter(schema: StructType) {
                   // create Spark SQL ArrayData
                   ArrayData.toArrayData(elems.toArray)
                 }
-              }
-              else
+                else
                 // Fallback
-                fieldData.asInstanceOf[Any]
+                  fieldData.asInstanceOf[Any]
+              }
             }
           }
         }

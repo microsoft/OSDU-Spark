@@ -3,11 +3,14 @@
 
 ## Features
 * Surface OSDU records as Spark data frames
-* Filtering by type and/or kind
+* Filtering by 
+  * Kind 
+  * Query (see [OSDU query syntax](https://community.opengroup.org/osdu/documentation/-/wikis/Releases/R2.0/OSDU-Query-Syntax))
 * Translation of OSDU schema to Spark schema
-  * Primitive types (string, integer, bool,...)
+  * Primitive types (string, integer, double, float, date, bool,...)
   * Arrays
   * Objects
+  * Maps
 * Column pruning: based on selected fields on the Spark side, only the requested columns are requested and transferred by the OSDU instance
 
 
@@ -18,7 +21,7 @@ Brief Example
         .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
         .option("query", "")
         .option("osduApiEndpoint", "<INSERT>")
-        .option("partitionId", "<INSERT>")
+        .option("partitionId", "<INSERT>")  // OSDU data partition ID
         .option("bearerToken","<INSERT>")
         .load
 

@@ -105,10 +105,11 @@ class OSDUSchemaConverter(definitions: Map[String, Map[String, Object]]) {
             var refStr = obj.get("$ref").asInstanceOf[String];
             if (refStr != null) {
               // inject definition
-              osduSchemaToDataType(definitions.get(refStr.substring("#/definitions/".length))) match {
-                case x: StructType => x.fields.toSeq
-                case y => Seq(StructField(propertyName, y))
-              }
+              Seq(
+                StructField(
+                  propertyName,
+                  osduSchemaToDataType(
+                    definitions.get(refStr.substring("#/definitions/".length)))))
             }
             else {
               // in-place schema definition

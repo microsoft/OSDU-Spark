@@ -29,7 +29,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.Queue
 
 import com.microsoft.osdu.client.invoker.{ApiClient, Configuration}
-import com.microsoft.osdu.client.api.SearchApi
+import com.microsoft.osdu.client.api.{SearchApi, StorageApi}
 import com.microsoft.osdu.client.model.SearchCursorQueryRequest
 
 /**
@@ -43,10 +43,10 @@ import com.microsoft.osdu.client.model.SearchCursorQueryRequest
   * @param schema The pruned schema of the data.
   */
 @SerialVersionUID(1L)
-class OSDUPartitionReader(kind: String, query: String, osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
+class OSDUPartitionReaderFiltered(kind: String, query: String, osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends PartitionReader[InternalRow] with Serializable {
 
-  private val logger = Logger.getLogger(classOf[OSDUPartitionReader])
+  private val logger = Logger.getLogger(classOf[OSDUPartitionReaderFiltered])
 
   private var currentRow: InternalRow = _
 
@@ -73,8 +73,6 @@ class OSDUPartitionReader(kind: String, query: String, osduApiEndpoint: String, 
 
     // prune schema to only include fields that are used in the query
   queryRequest.setReturnedFields(OSDUSchemaConverter.schemaToPaths(schema).asJava)
-
-  // val recordApi = new RecordApi
 
   override def close(): Unit = { }
 
