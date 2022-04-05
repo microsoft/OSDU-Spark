@@ -14,5 +14,5 @@ jobs:
         distribution: temurin
         java-version: 8
     - name: Build and Test
-      working-directory: spark-data-datasource
+      working-directory: spark-datasource
       run: sbt -v +test
