@@ -4,12 +4,16 @@ on:
   push:
 jobs:
   test:
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Install gpg secret key
+      # gpg --gen-key
+      # gpg --keyserver keyserver.ubuntu.com --send-keys 9E73EA7992793E477A000EE68944FC3E57D080BF
+      # gpg --export-secret-keys -a spark-oss-sonatype@microsoft.com > spark-oss-private.key
       run: |
         cat <(echo -e "${{ secrets.GPG_PRIVATE_KEY }}") | gpg --batch --import
         gpg --list-secret-keys --keyid-format LONG
@@ -24,12 +28,24 @@ jobs:
       working-directory: spark-datasource
       run: sbt -v +test
 
+  sonatype-upload:
+    name: Sonatype Upload
+    needs: test
     - name: Sonatype Upload
       working-directory: spark-datasource
       run: sbt publishSigned sonatypePrepare sonatypeBundleUpload
+      env:
+        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
 
+  sonatype-release:
+    name: Sonatype Release
+    needs: sonatype-upload
     # Only release when pushing to main
     - name: Sonatype Release
       working-directory: spark-datasource
       if: github.ref == 'refs/heads/main' && github.event_name != 'push'
       run: sbt sonatypeRelease
+      env:
+        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
