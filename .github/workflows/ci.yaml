@@ -28,7 +28,7 @@ jobs:
       working-directory: spark-datasource
       run: sbt -v +test
 
-  sonatype-upload:
+  sonatype_upload:
     name: Sonatype Upload
     needs: test
     - name: Sonatype Upload
@@ -38,9 +38,9 @@ jobs:
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
 
-  sonatype-release:
+  sonatype_release:
     name: Sonatype Release
-    needs: sonatype-upload
+    needs: sonatype_upload
     # Only release when pushing to main
     - name: Sonatype Release
       working-directory: spark-datasource
