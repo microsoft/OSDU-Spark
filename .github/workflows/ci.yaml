@@ -30,6 +30,7 @@ jobs:
 
   sonatypeupload:
     name: Sonatype Upload
+    runs-on: ubuntu-latest
     needs: test
     - name: Sonatype Upload
       working-directory: spark-datasource
@@ -40,6 +41,7 @@ jobs:
 
   sonatyperelease:
     name: Sonatype Release
+    runs-on: ubuntu-latest
     needs: sonatypeupload
     # Only release when pushing to main
     - name: Sonatype Release
