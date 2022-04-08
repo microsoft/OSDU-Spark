@@ -11,7 +11,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Install gpg secret key
-      # gpg --gen-key
+      # gpg --quick-generate-key "com.microsoft.spark <spark-oss-sonatype@microsoft.com>"
       # gpg --keyserver keyserver.ubuntu.com --send-keys 9E73EA7992793E477A000EE68944FC3E57D080BF
       # gpg --export-secret-keys -a spark-oss-sonatype@microsoft.com > spark-oss-private.key
       run: |
