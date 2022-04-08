@@ -25,5 +25,5 @@ developers := List(
 
 credentials += Credentials("Sonatype Nexus Repository Manager",
         "oss.sonatype.org",
-        sys.env.get("OSSRH_USERNAME").get,
-        sys.env.get("OSSRH_TOKEN").get)
+        sys.env.get("OSSRH_USERNAME").getOrElse(""),
+        sys.env.get("OSSRH_TOKEN").getOrElse(""))
