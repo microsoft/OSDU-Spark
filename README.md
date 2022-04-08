@@ -15,7 +15,34 @@
 * Column pruning: based on selected fields on the Spark side, only the requested columns are requested and transferred by the OSDU instance
 
 
-Brief Example
+## Installation
+
+### Synapse
+
+```json
+%%configure -f
+{
+  "name": "synapseml",
+  "conf": {
+      "spark.jars.packages": "com.microsoft.spark:osdu-spark-connector_2.12:1.0.0"
+  }
+}
+```
+
+### Databricks
+
+Coordinates: com.microsoft.spark:osdu-spark-connector_2.12:1.0.0
+
+### Python
+
+```python
+import pyspark
+spark = pyspark.sql.SparkSession.builder.appName("MyApp") \
+            .config("spark.jars.packages", "com.microsoft.spark:osdu-spark-connector_2.12:1.0.0") \
+            .getOrCreate()
+```
+
+## Read Example
 ```scala
     val sampleDf = sc.read
         .format("com.microsoft.spark.osdu")
@@ -79,14 +106,39 @@ Output
     |[,,,,, United Sta...|osdu:wks:master-d...|2147483647|      null|      null|2022-01-18T17:18:...|  null|2f59abbc-7b40-4d0...|osdukmtest-opendes...|
     +--------------------+--------------------+----------+----------+----------+--------------------+------+--------------------+--------------------+
 
+## Write example
+```scala
+val df = /*
+Dataframe with the following schema: 
+
+- kind: String ... OSDU record kind. e.g. osdu:wks:master-data--GeoPoliticalEntity:1.0.0
+- acl
+-- viewers: Array[String] ... e.g. ["data.default.viewers@opendes.contoso.com"]
+-- owners:  Array[String] ... e.g. ["data.default.owners@opendes.contoso.com"]
+- legal
+-- legaltags: Array[String] ... e.g. ["opendes-publis-usa-check-1"]
+-- otherRelevantDataCountries: Array[String] ... e.g. ["US"]
+- data
+-- !!! structure needs to match the schema defined by the reference OSDU record <kind> !!!
+*/
+
+df.write
+  .format("com.microsoft.spark.osdu")
+  .mode("append")
+  .option("kind", "<insert-kind>") // e.g. osdu:wks:master-data--GeoPoliticalEntity:1.0.0
+  .option("osduApiEndpoint", osduApiEndpoint)
+  .option("partitionId", partitionId)
+  .option("bearerToken", getBearerToken)
+  .save()
+```
+
 ## Dev
 To run the sandbox run 
 
 ```bash
-cd spark/datasource
+cd spark-datasource
 sbt testOnly 
 ```
-
 
 ## Contributing
 
