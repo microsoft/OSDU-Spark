@@ -4,7 +4,7 @@ on:
   push:
 jobs:
   test:
-    name: Build and Test
+    name: Build, Test and Release
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -28,28 +28,18 @@ jobs:
       working-directory: spark-datasource
       run: sbt -v +test
 
-  sonatype-upload:
-    name: Sonatype Upload
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Sonatype Upload
-        working-directory: spark-datasource
-        run: sbt publishSigned sonatypePrepare sonatypeBundleUpload
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
+    - name: Sonatype Upload
+      working-directory: spark-datasource
+      run: sbt publishSigned sonatypePrepare sonatypeBundleUpload
+      env:
+        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
 
-  sonatype-release:
-    name: Sonatype Release
-    runs-on: ubuntu-latest
-    needs: sonatype-upload
-    steps:
     # Only release when pushing to main
-      - name: Sonatype Release
-        working-directory: spark-datasource
-        if: github.ref == 'refs/heads/main' && github.event_name != 'push'
-        run: sbt sonatypeRelease
-        env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
+    - name: Sonatype Release
+      working-directory: spark-datasource
+      if: github.ref == 'refs/heads/main' && github.event_name != 'push'
+      run: sbt sonatypeRelease
+      env:
+        OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+        OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
