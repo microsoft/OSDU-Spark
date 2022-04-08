@@ -1,5 +1,6 @@
 # Spark Datasource Connector for Open Subsurface Data Universe (OSDU)
 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.microsoft.spark/osdu-spark-connector/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.microsoft.spark/osdu-spark-connector)
 
 ## Features
 * Surface OSDU records as Spark data frames

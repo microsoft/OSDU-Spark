@@ -38,7 +38,7 @@ jobs:
     # Only release when pushing to main
     - name: Sonatype Release
       working-directory: spark-datasource
-      if: github.ref == 'refs/heads/main' && github.event_name != 'push'
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       run: sbt sonatypeRelease
       env:
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
