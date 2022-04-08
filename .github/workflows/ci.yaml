@@ -6,17 +6,30 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
     - name: Install gpg secret key
       run: |
         cat <(echo -e "${{ secrets.GPG_PRIVATE_KEY }}") | gpg --batch --import
         gpg --list-secret-keys --keyid-format LONG
-    - name: Checkout
-      uses: actions/checkout@v2
+
     - name: Setup JDK
       uses: actions/setup-java@v2
       with:
         distribution: temurin
         java-version: 8
+
     - name: Build and Test
       working-directory: spark-datasource
       run: sbt -v +test
+
+    - name: Sonatype Upload
+      working-directory: spark-datasource
+      run: sbt publishSigned sonatypePrepare sonatypeBundleUpload
+
+    # Only release when pushing to main
+    - name: Sonatype Release
+      working-directory: spark-datasource
+      if: github.ref == 'refs/heads/main' && github.event_name != 'push'
+      run: sbt sonatypeRelease

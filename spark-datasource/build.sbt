@@ -3,7 +3,7 @@ scalaVersion := "2.12.15"
 
 name := "OSDU Spark Connector"
 organization := "com.microsoft"
-version := "1.0"
+version := "1.0.0"
 
 val sparkVersion = "3.2.0"
 
@@ -17,3 +17,8 @@ libraryDependencies ++= Seq(
 resolvers += Resolver.mavenLocal
 
 // coverageEnabled in ThisBuild := true
+
+publishTo := sonatypePublishToBundle.value
+
+ThisBuild / sonatypeCredentialHost := "oss.sonatype.org"
+ThisBuild / versionScheme := Some("semver-spec")
