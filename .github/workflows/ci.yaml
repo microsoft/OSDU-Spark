@@ -35,6 +35,11 @@ jobs:
         OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         OSSRH_TOKEN:    ${{ secrets.OSSRH_TOKEN }}
 
+    - uses: actions/upload-artifact@v3
+      with:
+        name: jar
+        path: spark-datasource/target/**/osdu-spark-connector_2.12-*.jar
+
     # Only release when pushing to main
     - name: Sonatype Release
       working-directory: spark-datasource
