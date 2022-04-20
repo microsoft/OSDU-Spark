@@ -4,7 +4,7 @@ scalaVersion := "2.12.15"
 name := "OSDU Spark Connector"
 // needs to match OSS Sonatype profile name
 organization := "com.microsoft.spark"
-version := "1.0.0"
+version := "1.0.1"
 
 val sparkVersion = "3.2.0"
 
