@@ -21,11 +21,13 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.util.ArrayData
 import org.apache.spark.sql.connector.write.{DataWriter, LogicalWriteInfo, PhysicalWriteInfo, WriterCommitMessage}
 import org.apache.spark.sql.types.{StringType, StructType}
+// import org.apache.spark.util.ThreadUtils
 import com.microsoft.osdu.client.api.StorageApi
 import com.microsoft.osdu.client.model.{StorageAcl, StorageLegal, StorageRecord}
 import com.microsoft.osdu.client.invoker.{ApiClient}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.MutableList
 
 class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends DataWriter[InternalRow] {
@@ -56,6 +58,25 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
     private val dataSchemaNumFields = dataSchema.size
 
     private val converter = new OSDURecordConverter(dataSchema)
+    private val recordBuffer = new MutableList[StorageRecord]
+    // TODO: make configurable
+    // private val forkJoinPool = ThreadUtils.newForkJoinPool("osdu-data-writer", 4)
+
+  private def postRecordsInBatch(minimumBatchSize: Int): Unit = {
+    if (recordBuffer.length >= minimumBatchSize) {
+
+      // TODO: use async thread-pool
+      // TODO: retry?
+      // up to 500
+      val createOrUpdateRecord = storageApi.createOrUpdateRecords(
+        partitionId,
+        true /* skipdups */,
+        "",
+        recordBuffer.asJava)     
+
+      recordBuffer.clear
+    }
+  }
 
   def write(record: InternalRow): Unit = {
 
@@ -107,15 +128,18 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
     val data = converter.toJava(dataStruct)
     storageRecord.setData(data)
 
-    // up to 500
-    val createOrUpdateRecord = storageApi.createOrUpdateRecords(
-      partitionId,
-      true /* skipdups */,
-      "",
-      Seq(storageRecord).asJava)
+    // add to batch
+    recordBuffer += storageRecord
+
+    // post batch
+    // TODO: parametrize batch size
+    postRecordsInBatch(500)
   }
 
   def commit(): WriterCommitMessage = {
+    // post final batch
+    postRecordsInBatch(1)
+
     WriteSucceeded
   }
 
