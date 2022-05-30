@@ -11,7 +11,7 @@ RUN apt-get update && \
         # Generic requirements
         ca-certificates \
         # Java (default-jdk === OpenJDK)
-        maven default-jdk \
+        openjdk-11-jdk openjdk-11-source \
         git python3 python3-pip \
         # Required to run apt-get in the container
         sudo \
