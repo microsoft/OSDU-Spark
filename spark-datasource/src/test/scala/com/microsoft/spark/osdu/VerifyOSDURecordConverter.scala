@@ -145,7 +145,7 @@ class VerifyOSDURecordConverter extends AnyFunSuite {
 
   test("Nested Types") {
     val schema = StructType(
-        StructField("a", 
+        StructField("a",
           StructType(
             StructField("x", DataTypes.DoubleType) ::
             StructField("y", DataTypes.DoubleType) :: Nil)) ::

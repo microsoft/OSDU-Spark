@@ -39,10 +39,10 @@ class OSDURecordConverter(schema: StructType) {
   private val logger = Logger.getLogger(classOf[OSDURecordConverter])
 
   /** Extracts the fields from the current OSDU record.
-    *
-    * @param record The OSDU record.
-    * @return The internal row holding the extracted fields.
-    */
+   *
+   * @param record The OSDU record.
+   * @return The internal row holding the extracted fields.
+   */
   def toInternalRow(data: Map[String, Object]): InternalRow = InternalRow.fromSeq(toSeq(schema, data))
 
   def toJava(row: InternalRow): Map[String, Object] = toJava(row, schema)
@@ -96,7 +96,7 @@ class OSDURecordConverter(schema: StructType) {
           map.put(nestedSchema.fields(i).name, LocalDate.ofEpochDay(row.getInt(i)).atStartOfDay().format(dateFormat))
         }
         //        else if (fieldDataType.isInstanceOf[TimestampType])
-//          map.put(nestedSchema.fields(i).name, (row.getLong(i))))
+        //          map.put(nestedSchema.fields(i).name, (row.getLong(i))))
         else if(fieldDataType.isInstanceOf[MapType]) {
           // convert to java map
           val sparkMap = row.getMap(i)
@@ -142,24 +142,27 @@ class OSDURecordConverter(schema: StructType) {
 
           if (fieldData == null) {
             // TODO: this could benefit from a good amount of unit testing
-            if (field.dataType.isInstanceOf[StructType] ||
-                field.dataType.isInstanceOf[ArrayType] ||
-                field.dataType.isInstanceOf[MapType] ||
-                field.dataType.isInstanceOf[DateType])
-              null
-              //new ArrayBasedMapData(ArrayData.toArrayData(Array.empty), ArrayData.toArrayData(Array.empty))
-            else
-              Seq.empty
+            //            if (field.dataType.isInstanceOf[StructType] ||
+            //                field.dataType.isInstanceOf[ArrayType] ||
+            //                field.dataType.isInstanceOf[MapType] ||
+            //                field.dataType.isInstanceOf[DateType] ||
+            //                field.dataType.isInstanceOf[StringType]
+            //            )
+            //              null
+            //              //new ArrayBasedMapData(ArrayData.toArrayData(Array.empty), ArrayData.toArrayData(Array.empty))
+            //            else
+            //              Seq.empty
+            null
           } else {
             field.dataType match {
               // primitive types
-              case DataTypes.StringType => UTF8String.fromString(fieldData.asInstanceOf[String])
+              case DataTypes.StringType => if (fieldData.asInstanceOf[String] != null) UTF8String.fromString(fieldData.asInstanceOf[String].toString) else null
               case DataTypes.IntegerType => numberToDouble(fieldData).toInt
               case DataTypes.LongType => numberToDouble(fieldData).toLong
               case DataTypes.DoubleType => numberToDouble(fieldData)
               case DataTypes.FloatType => numberToDouble(fieldData).toFloat
               case DataTypes.ShortType => numberToDouble(fieldData).toInt
-//              case DataTypes.TimestampType => TODO: return long here
+              //              case DataTypes.TimestampType => TODO: return long here
               case DataTypes.DateType => Option(fieldData.asInstanceOf[String]) match {
                 case Some(s) => ChronoUnit.DAYS.between(epoch, LocalDate.parse(s, dateFormat)).toInt
                 case _ => null

@@ -57,7 +57,7 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], val query:
     }
   }
 
-  override def capabilities(): util.Set[TableCapability] = 
+  override def capabilities(): util.Set[TableCapability] =
     Set(
       TableCapability.BATCH_READ,
       TableCapability.BATCH_WRITE,
@@ -96,5 +96,5 @@ class SimplePhysicalWriteInfo extends PhysicalWriteInfo {
 }
 
 class OSDUWriteBuilder(info: LogicalWriteInfo) extends WriteBuilder {
- override def build(): Write = new OSDUWrite(info, new SimplePhysicalWriteInfo())
+  override def build(): Write = new OSDUWrite(info, new SimplePhysicalWriteInfo())
 }

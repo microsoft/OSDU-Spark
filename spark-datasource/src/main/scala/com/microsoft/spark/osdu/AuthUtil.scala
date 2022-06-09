@@ -32,8 +32,8 @@ object AuthUtil {
       val endpoint = map.get("oauthEndpoint")
 
       // send oauth request
-      val clientSecretEncoded = URLEncoder.encode(clientSecret,"UTF-8")
-      val postBody = s"grant_type=client_credentials&client_id=$clientId&client_secret=$clientSecretEncoded&resource=$clientId"
+      val clientSecretEncoded = URLEncoder.encode(clientSecret, "UTF-8")
+      val postBody = s"grant_type=client_credentials&client_id=$clientId&client_secret=$clientSecretEncoded&scope=$clientId/.default"
 
       val conn = new URL(endpoint).openConnection.asInstanceOf[HttpURLConnection]
       conn.setRequestMethod("POST")
@@ -44,8 +44,8 @@ object AuthUtil {
 
       val responseJson = scala.io.Source.fromInputStream(conn.getInputStream).mkString
       val response = new ObjectMapper().readValue[java.util.Map[String, String]](responseJson, classOf[java.util.Map[String, String]])
-
       response.get("access_token")
     }
   }
+
 }
