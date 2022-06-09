@@ -19,7 +19,6 @@ package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.types._
 import org.apache.log4j.Logger
-import org.apache.spark.sql.types
 
 import java.util.{ArrayList, List, Map}
 import scala.collection.JavaConverters._

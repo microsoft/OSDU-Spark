@@ -1,5 +1,4 @@
 scalaVersion := "2.12.15" 
-// scalaVersion := "2.13.1"
 
 name := "OSDU Spark Connector"
 // needs to match OSS Sonatype profile name

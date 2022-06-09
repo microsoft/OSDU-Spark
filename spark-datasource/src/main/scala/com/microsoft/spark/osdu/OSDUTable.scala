@@ -19,7 +19,7 @@ package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.connector.catalog.{SupportsRead, SupportsWrite, Table, TableCapability}
 import org.apache.spark.sql.connector.expressions.Transform
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.sql.types.{StructType}
 
 import java.util
 import org.apache.spark.sql.connector.read._

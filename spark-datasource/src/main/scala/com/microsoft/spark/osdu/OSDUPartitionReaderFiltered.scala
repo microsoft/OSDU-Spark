@@ -17,13 +17,10 @@
 
 package com.microsoft.spark.osdu
 
-import java.io.IOException
-import java.util.Map
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.connector.read.PartitionReader
 import org.apache.spark.sql.types.{ArrayType, DataType, DataTypes, StructType}
-import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.Queue

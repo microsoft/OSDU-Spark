@@ -25,11 +25,9 @@ import org.apache.spark.sql.connector.expressions.Transform
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 import org.slf4j.LoggerFactory
-import org.slf4j.event.Level
 
 import java.util
-import java.util.Map
-import scala.collection.mutable
+
 import scala.collection.mutable.ArrayBuffer
 import collection.JavaConversions._
 
