@@ -33,7 +33,7 @@ class VerifySourceReader extends AnyFunSuite {
   val osduApiEndpoint = ""
   val oauthEndpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
 
-  def getBearerToken(): String = {
+  /*def getBearerToken(): String = {
 
 
     val map = new util.HashMap[String, String]()
@@ -149,5 +149,5 @@ class VerifySourceReader extends AnyFunSuite {
       .option("clientSecret", clientSecret)
       .option("oauthEndpoint", oauthEndpoint)
       .save()
-  }
+  }*/
 }
