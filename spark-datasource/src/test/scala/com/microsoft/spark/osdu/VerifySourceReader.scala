@@ -37,7 +37,7 @@ class VerifySourceReader extends AnyFunSuite {
   val osduApiEndpoint = "https://platform10731.energy.azure.com"
   val oauthEndpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
 
-  /*def getBearerToken(): String = {
+  def getBearerToken(): String = {
 
 
     val map = new util.HashMap[String, String]()
@@ -48,113 +48,113 @@ class VerifySourceReader extends AnyFunSuite {
     return AuthUtil.getBearerToken(map)
   }
 
-   test("OSDU Catalog") {
-     val conf = new SparkConf()
-       .setMaster("local") // local instance
-       .setAppName("OSDUIntegrationTest")
-       .set("spark.sql.catalog.osdu1", "com.microsoft.spark.osdu.OSDUCatalog")
-       .set("spark.sql.catalog.osdu1.osduApiEndpoint", osduApiEndpoint)
-       .set("spark.sql.catalog.osdu1.partitionId", partitionId)
-       .set("spark.sql.catalog.osdu1.bearerToken", getBearerToken())
+  /*test("OSDU Catalog") {
+    val conf = new SparkConf()
+      .setMaster("local") // local instance
+      .setAppName("OSDUIntegrationTest")
+      .set("spark.sql.catalog.osdu1", "com.microsoft.spark.osdu.OSDUCatalog")
+      .set("spark.sql.catalog.osdu1.osduApiEndpoint", osduApiEndpoint)
+      .set("spark.sql.catalog.osdu1.partitionId", partitionId)
+      .set("spark.sql.catalog.osdu1.bearerToken", getBearerToken())
 
-     val sc = SparkSession.builder().config(conf).getOrCreate()
-     sc.sql("SHOW TABLES FROM osdu1.osdu.wks").show()
+    val sc = SparkSession.builder().config(conf).getOrCreate()
+    sc.sql("SHOW TABLES FROM osdu1.osdu.wks").show()
 
-     val df = sc.sql("SELECT * FROM osdu1.osdu.wks.`master-data--GeoPoliticalEntity:1.0.0`")
+    val df = sc.sql("SELECT * FROM osdu1.osdu.wks.`master-data--GeoPoliticalEntity:1.0.0`")
 
-     df.printSchema()
+    df.printSchema()
 
-     df.show()
-   }
+    df.show()
+  }
 
-   test("OSDU to Spark") {
-     val conf = new SparkConf()
-         .setMaster("local") // local instance
-         .setAppName("OSDUIntegrationTest")
+  test("OSDU to Spark") {
+    val conf = new SparkConf()
+      .setMaster("local") // local instance
+      .setAppName("OSDUIntegrationTest")
 
-     val sc = SparkSession.builder().config(conf).getOrCreate()
-     val sampleDf = sc.read
-         .format("com.microsoft.spark.osdu")
-         .option("kind", "osdu:wks:reference-data--ProcessingParameterType:1.0.0")
-         .option("query", "")
-         .option("osduApiEndpoint", osduApiEndpoint)
-         .option("partitionId", partitionId)
-         .option("clientId", clientId)
-         .option("clientSecret", clientSecret)
-         .option("oauthEndpoint", oauthEndpoint)
-         .load()
-         .select("data.ID", "data.Name", "data.Source")
+    val sc = SparkSession.builder().config(conf).getOrCreate()
+    val sampleDf = sc.read
+      .format("com.microsoft.spark.osdu")
+      .option("kind", "osdu:wks:reference-data--ProcessingParameterType:1.0.0")
+      .option("query", "")
+      .option("osduApiEndpoint", osduApiEndpoint)
+      .option("partitionId", partitionId)
+      .option("clientId", clientId)
+      .option("clientSecret", clientSecret)
+      .option("oauthEndpoint", oauthEndpoint)
+      .load()
+      .select("data.ID", "data.Name", "data.Source")
 
-     sampleDf.printSchema()
-     sampleDf.show(false)
-   }
+    sampleDf.printSchema()
+    sampleDf.show(false)
+  }
 
- test("Spark to OSDU") {
-//     // TODO: the following tag needs to be pre-populated w/ the OSDU instance
-//
+  test("Spark to OSDU") {
+    //     // TODO: the following tag needs to be pre-populated w/ the OSDU instance
+    //
 
 
-     val conf = new SparkConf()
-         .setMaster("local") // local instance
-         .setAppName("OSDUIntegrationTest")
+    val conf = new SparkConf()
+      .setMaster("local") // local instance
+      .setAppName("OSDUIntegrationTest")
 
-     val sc = SparkSession.builder().config(conf).getOrCreate()
+    val sc = SparkSession.builder().config(conf).getOrCreate()
 
-     val schema = StructType(
-       StructField("kind", DataTypes.StringType, false) ::
-       StructField(
-         "acl",
-         StructType(
-           StructField("viewers", ArrayType(DataTypes.StringType, false)) ::
-           StructField("owners",  ArrayType(DataTypes.StringType, false)) :: Nil
-         ),
-         false) ::
-       StructField(
-         "legal",
-         StructType(
-           StructField("legaltags", ArrayType(DataTypes.StringType, false)) ::
-           StructField("otherRelevantDataCountries",  ArrayType(DataTypes.StringType, false)) :: Nil
-           // TODO: status
-         ),
-         false) ::
-       StructField(
-         "data",
-         StructType(
-           StructField("Name", DataTypes.StringType, false) ::
-           StructField("ID", DataTypes.StringType, false) ::
-           StructField("Code", DataTypes.StringType, false) ::
-           StructField("Source", DataTypes.StringType, false):: Nil
+    val schema = StructType(
+      StructField("kind", DataTypes.StringType, false) ::
+        StructField(
+          "acl",
+          StructType(
+            StructField("viewers", ArrayType(DataTypes.StringType, false)) ::
+              StructField("owners", ArrayType(DataTypes.StringType, false)) :: Nil
+          ),
+          false) ::
+        StructField(
+          "legal",
+          StructType(
+            StructField("legaltags", ArrayType(DataTypes.StringType, false)) ::
+              StructField("otherRelevantDataCountries", ArrayType(DataTypes.StringType, false)) :: Nil
+            // TODO: status
+          ),
+          false) ::
+        StructField(
+          "data",
+          StructType(
+            StructField("Name", DataTypes.StringType, false) ::
+              StructField("ID", DataTypes.StringType, false) ::
+              StructField("Code", DataTypes.StringType, false) ::
+              StructField("Source", DataTypes.StringType, false) :: Nil
 
-         ),
-         false) :: Nil
-     )
+          ),
+          false) :: Nil
+    )
 
-     val rows = Seq(Row(
-       // kind
-       "osdu:wks:reference-data--ProcessingParameterType:1.0.0",
-        // ACL
-        Row(Seq("data.default.viewers@platform10731-opendes.contoso.com"),
-            Seq("data.default.owners@platform10731-opendes.contoso.com")),
-        // Legal
-        Row(Seq("platform10731-opendes-public-usa-check-1-test-spancholi"),
-            Seq("US")),
-        // Data
-        Row("QA Test Case11 - spancholi", "qatest11", "QA Test Case 11", "spark-to-osdu-load-testcase11"))
-     )
+    val rows = Seq(Row(
+      // kind
+      "osdu:wks:reference-data--ProcessingParameterType:1.0.0",
+      // ACL
+      Row(Seq("data.default.viewers@platform10731-opendes.contoso.com"),
+        Seq("data.default.owners@platform10731-opendes.contoso.com")),
+      // Legal
+      Row(Seq("platform10731-opendes-public-usa-check-1-test-spancholi"),
+        Seq("US")),
+      // Data
+      Row("QA Test Case11 - spancholi", "qatest11", "QA Test Case 11", "spark-to-osdu-load-testcase11"))
+    )
 
-     val df = sc.createDataFrame(sc.sparkContext.parallelize(rows), schema)
+    val df = sc.createDataFrame(sc.sparkContext.parallelize(rows), schema)
 
-     df.show(false)
+    df.show(false)
 
-     df.write
-       .format("com.microsoft.spark.osdu")
-       .mode("append")
-       .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
-       .option("osduApiEndpoint", osduApiEndpoint)
-       .option("partitionId", partitionId)
-       .option("clientId", clientId)
-       .option("clientSecret", clientSecret)
-       .option("oauthEndpoint", oauthEndpoint)
-       .save()
-   }
+    df.write
+      .format("com.microsoft.spark.osdu")
+      .mode("append")
+      .option("kind", "osdu:wks:master-data--GeoPoliticalEntity:1.0.0")
+      .option("osduApiEndpoint", osduApiEndpoint)
+      .option("partitionId", partitionId)
+      .option("clientId", clientId)
+      .option("clientSecret", clientSecret)
+      .option("oauthEndpoint", oauthEndpoint)
+      .save()
+  }*/
 }
