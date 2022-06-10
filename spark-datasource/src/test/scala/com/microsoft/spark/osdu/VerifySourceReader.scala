@@ -22,19 +22,15 @@ import org.apache.spark.sql.{Row, SparkSession, types}
 import org.apache.spark.sql.types.{ArrayType, DataTypes, StructField, StructType}
 import org.scalatest.funsuite.AnyFunSuite
 
-import java.net.{HttpURLConnection, URL, URLEncoder}
-import com.fasterxml.jackson.databind.ObjectMapper
-
-import java.nio.charset.StandardCharsets
 import java.util
 
 class VerifySourceReader extends AnyFunSuite {
 
-  val tenantId = "********************"
-  val clientId = "********************"
-  val clientSecret = "********************"
-  val partitionId = "platform10731-opendes"
-  val osduApiEndpoint = "https://platform10731.energy.azure.com"
+  val tenantId = ""
+  val clientId = ""
+  val clientSecret = ""
+  val partitionId = ""
+  val osduApiEndpoint = ""
   val oauthEndpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
 
   def getBearerToken(): String = {
@@ -48,7 +44,7 @@ class VerifySourceReader extends AnyFunSuite {
     return AuthUtil.getBearerToken(map)
   }
 
-  /*test("OSDU Catalog") {
+  test("OSDU Catalog") {
     val conf = new SparkConf()
       .setMaster("local") // local instance
       .setAppName("OSDUIntegrationTest")
@@ -91,9 +87,6 @@ class VerifySourceReader extends AnyFunSuite {
 
   test("Spark to OSDU") {
     //     // TODO: the following tag needs to be pre-populated w/ the OSDU instance
-    //
-
-
     val conf = new SparkConf()
       .setMaster("local") // local instance
       .setAppName("OSDUIntegrationTest")
@@ -156,5 +149,5 @@ class VerifySourceReader extends AnyFunSuite {
       .option("clientSecret", clientSecret)
       .option("oauthEndpoint", oauthEndpoint)
       .save()
-  }*/
+  }
 }
