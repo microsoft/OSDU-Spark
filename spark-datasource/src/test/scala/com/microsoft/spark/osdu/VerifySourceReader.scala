@@ -37,7 +37,7 @@ class VerifySourceReader extends AnyFunSuite {
   val osduApiEndpoint = "https://platform10731.energy.azure.com"
   val oauthEndpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
 
-  def getBearerToken(): String = {
+  /*def getBearerToken(): String = {
 
 
     val map = new util.HashMap[String, String]()
