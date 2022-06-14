@@ -26,12 +26,6 @@ import java.util
 
 class VerifySourceReader extends AnyFunSuite {
 
-  val tenantId = ""
-  val clientId = ""
-  val clientSecret = ""
-  val partitionId = ""
-  val osduApiEndpoint = ""
-  val oauthEndpoint = s"https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
 
   /*def getBearerToken(): String = {
 
@@ -82,7 +76,7 @@ class VerifySourceReader extends AnyFunSuite {
       .select("data.ID", "data.Name", "data.Source")
 
     sampleDf.printSchema()
-    sampleDf.show(false)
+    sampleDf.show(50,false)
   }
 
   test("Spark to OSDU") {
@@ -132,7 +126,7 @@ class VerifySourceReader extends AnyFunSuite {
       Row(Seq("platform10731-opendes-public-usa-check-1-test-spancholi"),
         Seq("US")),
       // Data
-      Row("QA Test Case11 - spancholi", "qatest11", "QA Test Case 11", "spark-to-osdu-load-testcase11"))
+      Row("QA Test Case16 - spancholi", "qatest16", "QA Test Case 16", "spark-to-osdu-load-testcase16"))
     )
 
     val df = sc.createDataFrame(sc.sparkContext.parallelize(rows), schema)

@@ -70,6 +70,7 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
 
         val createOrUpdateRecord = storageApi.createOrUpdateRecords(
           partitionId, true, "", recordBuffer.asJava)
+
       } else {
         val osc = new OSDUStorageClient
         osc.postRecords(osduApiEndpoint, partitionId, bearerToken, recordBuffer)

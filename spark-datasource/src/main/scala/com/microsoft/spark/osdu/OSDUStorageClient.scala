@@ -24,15 +24,15 @@ class OSDUStorageClient {
       val objectMapper = new ObjectMapper()
       val json = objectMapper.writeValueAsString(storageRecord.asJava)
 
-      val response = client.prepare("PUT", url)
+      val future = client.prepare("PUT", url)
         .setHeader("user-agent", "Spark")
         .setHeader("authorization", "Bearer " + bearerToken)
         .setHeader("content-type", "application/json")
         .setHeader("data-partition-id", partitionId)
         .setBody(json)
-        .execute
-        .toCompletableFuture
-        .join()
+        .execute()
+
+      val response =future.get()
 
       response.getStatusCode match {
         case 201 => logger.info("Request was completed successfully. Response Message: \n" + response.getResponseBody())
