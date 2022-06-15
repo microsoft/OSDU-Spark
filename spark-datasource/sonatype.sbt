@@ -20,7 +20,8 @@ scmInfo := Some(
   )
 )
 developers := List(
-  Developer(id="eisber", name="Markus Cozowicz", email="marcozo@microsoft.com", url=url("https://github.com/microsoft/OSDU-Spark"))
+  Developer(id="eisber", name="Markus Cozowicz", email="marcozo@microsoft.com", url=url("https://github.com/microsoft/OSDU-Spark")),
+  Developer(id="spancholi87", name="Swapnil Pancholi", email="spancholi@microsoft.com", url=url("https://github.com/microsoft/OSDU-Spark"))
 )
 
 credentials += Credentials("Sonatype Nexus Repository Manager",
