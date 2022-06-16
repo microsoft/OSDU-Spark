@@ -142,16 +142,16 @@ class OSDURecordConverter(schema: StructType) {
 
           if (fieldData == null) {
             // TODO: this could benefit from a good amount of unit testing
-            //            if (field.dataType.isInstanceOf[StructType] ||
-            //                field.dataType.isInstanceOf[ArrayType] ||
-            //                field.dataType.isInstanceOf[MapType] ||
-            //                field.dataType.isInstanceOf[DateType] ||
-            //                field.dataType.isInstanceOf[StringType]
-            //            )
-            //              null
-            //              //new ArrayBasedMapData(ArrayData.toArrayData(Array.empty), ArrayData.toArrayData(Array.empty))
-            //            else
-            //              Seq.empty
+                        if (field.dataType.isInstanceOf[StructType] ||
+                            field.dataType.isInstanceOf[ArrayType] ||
+                            field.dataType.isInstanceOf[MapType] ||
+                            field.dataType.isInstanceOf[DateType] ||
+                            field.dataType.isInstanceOf[StringType]
+                        )
+                          null
+                          //new ArrayBasedMapData(ArrayData.toArrayData(Array.empty), ArrayData.toArrayData(Array.empty))
+                        else
+                          Seq.empty
             null
           } else {
             field.dataType match {
