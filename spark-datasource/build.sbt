@@ -1,7 +1,5 @@
 scalaVersion := "2.12.15"
 
-import sbt._
-
 name := "OSDU Spark Connector"
 // needs to match OSS Sonatype profile name
 organization := "com.microsoft.spark"

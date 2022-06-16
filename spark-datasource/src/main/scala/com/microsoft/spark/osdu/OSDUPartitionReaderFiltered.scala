@@ -62,7 +62,7 @@ class OSDUPartitionReaderFiltered(kind: String, query: String, osduApiEndpoint: 
   queryRequest.kind(kind)
   queryRequest.query(query)
   // TODO: expose to API surface
-  queryRequest.limit(2)
+  queryRequest.limit(1000)
 
   // TODO: could be used to parallize across multiple nodes - while sacrificing consistency
   // private var offset: Int = 0
