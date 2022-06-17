@@ -67,7 +67,7 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
       // TODO: use async thread-pool
       // TODO: retry?
       // up to 500
-      //TODO - Remove the if condition in future use OSDUSDK to post data
+      //TODO - Remove the if condition in future and use OSDUSDK to post data
       if (useOSDUSDK) {
         val client = new ApiClient()
         client.setBasePath(osduApiEndpoint)
