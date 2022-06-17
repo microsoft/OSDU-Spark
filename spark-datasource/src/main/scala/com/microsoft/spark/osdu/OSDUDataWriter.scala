@@ -28,7 +28,15 @@ import com.microsoft.osdu.client.invoker.{ApiClient}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.MutableList
 
-class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType, useOakSdk: Boolean = false)
+/**
+ *
+ * @param osduApiEndpoint OSDU Api End point to post data to
+ * @param partitionId - partition id where the data should be posted
+ * @param bearerToken - OAuth Bearer token for authentication
+ * @param schema - Data schema of the payload
+ * @param useOSDUSDK - Boolean Flag on to use OSDU sdk vs http client for posting data
+ */
+class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType, useOSDUSDK: Boolean = false)
   extends DataWriter[InternalRow] {
 
   private val idxId = if (schema.fieldNames contains "id") schema.fieldIndex("id") else -1
@@ -59,7 +67,8 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
       // TODO: use async thread-pool
       // TODO: retry?
       // up to 500
-      if (useOakSdk) {
+      //TODO - Remove the if condition in future use OSDUSDK to post data
+      if (useOSDUSDK) {
         val client = new ApiClient()
         client.setBasePath(osduApiEndpoint)
         client.setBearerToken(bearerToken)

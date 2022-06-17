@@ -156,7 +156,7 @@ class OSDURecordConverter(schema: StructType) {
           } else {
             field.dataType match {
               // primitive types
-              case DataTypes.StringType => if (fieldData.asInstanceOf[String] != null) UTF8String.fromString(fieldData.asInstanceOf[String].toString) else null
+              case DataTypes.StringType => UTF8String.fromString(fieldData.asInstanceOf[String])
               case DataTypes.IntegerType => numberToDouble(fieldData).toInt
               case DataTypes.LongType => numberToDouble(fieldData).toLong
               case DataTypes.DoubleType => numberToDouble(fieldData)

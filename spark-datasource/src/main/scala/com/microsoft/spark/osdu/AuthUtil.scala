@@ -33,8 +33,8 @@ object AuthUtil {
 
       // send oauth request
       val clientSecretEncoded = URLEncoder.encode(clientSecret, "UTF-8")
+      //Oauth v2.0 endpoint
       val postBody = s"grant_type=client_credentials&client_id=$clientId&client_secret=$clientSecretEncoded&scope=$clientId/.default"
-
       val conn = new URL(endpoint).openConnection.asInstanceOf[HttpURLConnection]
       conn.setRequestMethod("POST")
       conn.addRequestProperty("Content-Type", "application/x-www-form-urlencoded")
@@ -47,5 +47,4 @@ object AuthUtil {
       response.get("access_token")
     }
   }
-
 }
