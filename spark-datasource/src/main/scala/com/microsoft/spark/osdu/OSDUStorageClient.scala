@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory
 
 /**
  * This is temporary till mechanism to post
- * data to OSDU. Once OSDUSDK's response value
- * is fixed this will be deprecated.
+ * data to OSDU is fixed. Once OSDU SDK's response value
+ * is fixed, this will be deprecated.
  */
 
 class OSDUStorageClient {

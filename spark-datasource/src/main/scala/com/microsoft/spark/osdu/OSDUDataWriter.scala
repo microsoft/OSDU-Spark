@@ -23,10 +23,8 @@ import org.apache.spark.sql.connector.write.{DataWriter, WriterCommitMessage}
 import org.apache.spark.sql.types.{StringType, StructType}
 
 import com.microsoft.osdu.client.model.{StorageAcl, StorageLegal, StorageRecord}
-import com.microsoft.osdu.client.invoker.{ApiClient}
-
-import scala.collection.JavaConverters._
 import scala.collection.mutable.MutableList
+
 
 /**
  *
@@ -36,7 +34,7 @@ import scala.collection.mutable.MutableList
  * @param schema - Data schema of the payload
  * @param useOSDUSDK - Boolean Flag on to use OSDU sdk vs http client for posting data
  */
-class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType, useOSDUSDK: Boolean = false)
+class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: String, schema: StructType)
   extends DataWriter[InternalRow] {
 
   private val idxId = if (schema.fieldNames contains "id") schema.fieldIndex("id") else -1
@@ -57,9 +55,14 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
 
   private val converter = new OSDURecordConverter(dataSchema)
   private val recordBuffer = new MutableList[StorageRecord]
+  /*val client = new ApiClient()
+  client.setBasePath(osduApiEndpoint)
+  client.setBearerToken(bearerToken)
+  private val storageApi = new StorageApi(client)*/
+  private val osc = new OSDUStorageClient()
+
   // TODO: make configurable
   // private val forkJoinPool = ThreadUtils.newForkJoinPool("osdu-data-writer", 4)
-
 
   private def postRecordsInBatch(minimumBatchSize: Int): Unit = {
     if (recordBuffer.length >= minimumBatchSize) {
@@ -67,22 +70,10 @@ class OSDUDataWriter(osduApiEndpoint: String, partitionId: String, bearerToken: 
       // TODO: use async thread-pool
       // TODO: retry?
       // up to 500
-      //TODO - Remove the if condition in future and use OSDUSDK to post data
-      if (useOSDUSDK) {
-        val client = new ApiClient()
-        client.setBasePath(osduApiEndpoint)
-        client.setBearerToken(bearerToken)
-
-        import com.microsoft.osdu.client.api.StorageApi
-        val storageApi = new StorageApi(client)
-
-        val createOrUpdateRecord = storageApi.createOrUpdateRecords(
-          partitionId, true, "", recordBuffer.asJava)
-
-      } else {
-        val osc = new OSDUStorageClient
+      //TODO - use OSDU SDK to post data once the response type is fixed
+        /*val createOrUpdateRecord = storageApi.createOrUpdateRecords(
+          partitionId, true, "", recordBuffer.asJava)*/
         osc.postRecords(osduApiEndpoint, partitionId, bearerToken, recordBuffer)
-      }
 
       recordBuffer.clear
     }
