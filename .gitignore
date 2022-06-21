@@ -29,4 +29,4 @@ spark-datasource/.idea/
 .idea/
 spark-datasource/.bsp/
 spark-datasource/null/
-*/test/scala/com/microsoft/spark/osdu/VerifySourceReader.scala
+*test/scala/com/microsoft/spark/osdu/VerifySourceReader.scala
