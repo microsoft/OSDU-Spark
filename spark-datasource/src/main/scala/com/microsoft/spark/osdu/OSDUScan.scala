@@ -59,7 +59,7 @@ class OSDUScan(options: CaseInsensitiveStringMap, prunedSchema: Option[StructTyp
 
   override def planInputPartitions(): Array[InputPartition] = Array(new OSDUPartition())
 
-  override def createReaderFactory(): read.PartitionReaderFactory = 
+  override def createReaderFactory(): read.PartitionReaderFactory =
     new OSDUPartitionReaderFactory(
       kind,
       query,
@@ -73,9 +73,9 @@ class OSDUPartition extends InputPartition
 
 class OSDUPartitionReaderFactory(kind: String, query: String, osduApiEndpoint: String, partitionId: String, bearerToken: String, prunedSchema: StructType) extends PartitionReaderFactory {
   override def createReader(partition: InputPartition): PartitionReader[InternalRow] = {
-//     if (query == null || query.length == 0 || query.equals("*"))
-//       new OSDUPartitionReader(kind, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
-//     else
-      new OSDUPartitionReaderFiltered(kind, query, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
+    //     if (query == null || query.length == 0 || query.equals("*"))
+    //       new OSDUPartitionReader(kind, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
+    //     else
+    new OSDUPartitionReaderFiltered(kind, query, osduApiEndpoint, partitionId, bearerToken, prunedSchema)
   }
 }

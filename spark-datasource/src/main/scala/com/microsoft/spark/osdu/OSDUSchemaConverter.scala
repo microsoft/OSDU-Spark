@@ -19,122 +19,121 @@ package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.types._
 import org.apache.log4j.Logger
-import org.apache.spark.sql.types
 
 import java.util.{ArrayList, List, Map}
 import scala.collection.JavaConverters._
 
 /** Convert OSDU schema to Spark SQL schema. */
 class OSDUSchemaConverter(definitions: Map[String, Map[String, Object]]) {
-    private val logger = Logger.getLogger(classOf[OSDUSchemaConverter])
+  private val logger = Logger.getLogger(classOf[OSDUSchemaConverter])
 
-    private def resolveDataType(subObj: Map[String, Object]): DataType = {
-      subObj.get("type").asInstanceOf[String] match {
-        case "string"  => StringType
-        case "boolean" => BooleanType
-        case "integer" => IntegerType
-        case "number"  => DoubleType
-        case "double"  => DoubleType
-        case "float"   => DoubleType
-        case "date"    => DateType
-        // recurse into nested schema
-        case "object"  => osduSchemaToDataType(subObj)
-        case "array"   => {
-          val itemData = subObj.get("items").asInstanceOf[Map[String, Object]]
-          // resolve primitive & complex types
-          val elemType = resolveDataType(itemData)
+  private def resolveDataType(subObj: Map[String, Object]): DataType = {
+    subObj.get("type").asInstanceOf[String] match {
+      case "string"  => StringType
+      case "boolean" => BooleanType
+      case "integer" => IntegerType
+      case "number"  => DoubleType
+      case "double"  => DoubleType
+      case "float"   => DoubleType
+      case "date"    => DateType
+      // recurse into nested schema
+      case "object"  => osduSchemaToDataType(subObj)
+      case "array"   => {
+        val itemData = subObj.get("items").asInstanceOf[Map[String, Object]]
+        // resolve primitive & complex types
+        val elemType = resolveDataType(itemData)
 
-//            .getOrElse({
-//            // resolve reference types
-//            val refStr = itemData.get("$ref").asInstanceOf[String].substring("#/definitions/".length)
-//            // recurse into nested schema
-//            osduSchemaToStruct(definitions.get(refStr))
-//          })
-          ArrayType(elemType, true)
+        //            .getOrElse({
+        //            // resolve reference types
+        //            val refStr = itemData.get("$ref").asInstanceOf[String].substring("#/definitions/".length)
+        //            // recurse into nested schema
+        //            osduSchemaToStruct(definitions.get(refStr))
+        //          })
+        ArrayType(elemType, true)
+      }
+      // if "type" string is not defined, it's a nested schema
+      case "null" => NullType
+      case null => osduSchemaToDataType(subObj)
+      case _ => throw new IllegalArgumentException(s"Unsupported type: ${subObj.get("type")}")
+    }
+  }
+
+  /** Convert the OSDU schema to a Spark SQL schema.
+   *
+   * Any polymorphic types are fully expanded.
+   */
+  def osduSchemaToDataType(obj: Map[String, Object]): DataType = {
+    //      println(s"osduSchemaToStruct $obj") // use for debugging
+
+    // fetch mandatory fields and translate to nullable flag
+    val required = obj.getOrDefault("required", new ArrayList[String]()).asInstanceOf[List[String]]
+
+    val props = obj.get("properties").asInstanceOf[Map[String, Map[String, Object]]].asScala
+    if (props == null) {
+      // from a global/union perpsective allOf/anyOf has the same behavior
+      var axxOf = obj.get("allOf").asInstanceOf[List[Map[String, Object]]]
+      if (axxOf == null)
+        axxOf = obj.get("anyOf").asInstanceOf[List[Map[String, Object]]]
+      if (axxOf == null)
+        axxOf = obj.get("oneOf").asInstanceOf[List[Map[String, Object]]]
+
+      if (axxOf == null) {
+        if (obj.containsKey("$ref")) {
+          val refStr = obj.get("$ref").asInstanceOf[String].substring("#/definitions/".length)
+          // recurse into nested schema
+          osduSchemaToDataType(definitions.get(refStr))
         }
-        // if "type" string is not defined, it's a nested schema
-        case "null" => NullType
-        case null => osduSchemaToDataType(subObj)
-        case _ => throw new IllegalArgumentException(s"Unsupported type: ${subObj.get("type")}")
+        else
+          MapType(StringType, StringType)
+      } else {
+        // union all properties of objects contained in allOf list
+        val subFields: Seq[StructField] = axxOf.asScala
+          .map { osduSchemaToDataType(_)  }
+          .filter { _.isInstanceOf[StructType] } // remove map types (can't union them)
+          .map { _.asInstanceOf[StructType].fields }
+          .flatten
+
+        // flatten - distinctBy name
+        new StructType(subFields.toList.groupBy(_.name).map(_._2.head).toArray)
       }
     }
-
-    /** Convert the OSDU schema to a Spark SQL schema.
-     *
-     * Any polymorphic types are fully expanded.
-     */
-    def osduSchemaToDataType(obj: Map[String, Object]): DataType = {
-//      println(s"osduSchemaToStruct $obj") // use for debugging
-
-      // fetch mandatory fields and translate to nullable flag
-      val required = obj.getOrDefault("required", new ArrayList[String]()).asInstanceOf[List[String]]
-
-      val props = obj.get("properties").asInstanceOf[Map[String, Map[String, Object]]].asScala
-      if (props == null) {
-        // from a global/union perpsective allOf/anyOf has the same behavior
-        var axxOf = obj.get("allOf").asInstanceOf[List[Map[String, Object]]]
-        if (axxOf == null)
-          axxOf = obj.get("anyOf").asInstanceOf[List[Map[String, Object]]]
-        if (axxOf == null)
-          axxOf = obj.get("oneOf").asInstanceOf[List[Map[String, Object]]]
-
-        if (axxOf == null) {
-          if (obj.containsKey("$ref")) {
-            val refStr = obj.get("$ref").asInstanceOf[String].substring("#/definitions/".length)
-            // recurse into nested schema
-            osduSchemaToDataType(definitions.get(refStr))
+    else {
+      val fields = props.map {
+        case (propertyName, obj) => {
+          // resolve schema reference
+          var refStr = obj.get("$ref").asInstanceOf[String];
+          if (refStr != null) {
+            // inject definition
+            Seq(
+              StructField(
+                propertyName,
+                osduSchemaToDataType(
+                  definitions.get(refStr.substring("#/definitions/".length)))))
           }
-          else
-            MapType(StringType, StringType)
-        } else {
-          // union all properties of objects contained in allOf list
-          val subFields: Seq[StructField] = axxOf.asScala
-            .map { osduSchemaToDataType(_)  }
-            .filter { _.isInstanceOf[StructType] } // remove map types (can't union them)
-            .map { _.asInstanceOf[StructType].fields }
-            .flatten
+          else {
+            // in-place schema definition
+            val resolvedDataType = resolveDataType(obj)
+            val comment = obj.get("description").asInstanceOf[String]
+            val isNullable = !required.contains(propertyName)
 
-          // flatten - distinctBy name
-          new StructType(subFields.toList.groupBy(_.name).map(_._2.head).toArray)
-        }
-      }
-      else {
-        val fields = props.map {
-          case (propertyName, obj) => {
-            // resolve schema reference
-            var refStr = obj.get("$ref").asInstanceOf[String];
-            if (refStr != null) {
-              // inject definition
-              Seq(
-                StructField(
-                  propertyName,
-                  osduSchemaToDataType(
-                    definitions.get(refStr.substring("#/definitions/".length)))))
-            }
-            else {
-              // in-place schema definition
-              val resolvedDataType = resolveDataType(obj)
-              val comment = obj.get("description").asInstanceOf[String]
-              val isNullable = !required.contains(propertyName)
-
-              // TODO: we could propagate the metadata
-              val metadata = new MetadataBuilder()
-                .putString("pattern", obj.get("pattern").asInstanceOf[String])
-                .putString("title",   obj.get("title").asInstanceOf[String])
+            // TODO: we could propagate the metadata
+            val metadata = new MetadataBuilder()
+              .putString("pattern", obj.get("pattern").asInstanceOf[String])
+              .putString("title",   obj.get("title").asInstanceOf[String])
               // TODO: x-osdu-relationship
-                .build()
+              .build()
 
-              Seq(StructField(propertyName, resolvedDataType, isNullable, metadata).withComment(comment))
-            }
+            Seq(StructField(propertyName, resolvedDataType, isNullable, metadata).withComment(comment))
           }
-        }.flatten
-        // Scala 2.13.x
-        // Some(new StructType(fields.toSeq.distinctBy { _.name } .toArray))
+        }
+      }.flatten
+      // Scala 2.13.x
+      // Some(new StructType(fields.toSeq.distinctBy { _.name } .toArray))
 
-        // Scala 2.12.x
-        new StructType(fields.toList.groupBy(_.name).map(_._2.head).toArray)
-      }
+      // Scala 2.12.x
+      new StructType(fields.toList.groupBy(_.name).map(_._2.head).toArray)
     }
+  }
 }
 
 object OSDUSchemaConverter {
@@ -174,13 +173,13 @@ object OSDUSchemaConverter {
           val arrType = field.dataType.asInstanceOf[ArrayType]
 
           if (arrType.elementType.isInstanceOf[StructType])
-            // Recurse into nested fields
+          // Recurse into nested fields
             schemaToPaths(arrType.elementType.asInstanceOf[StructType], fieldPath)
           else
             Seq(fieldPath.mkString("."))
         }
         else
-          // Leaf node
+        // Leaf node
           Seq(fieldPath.mkString("."))
       }
     }

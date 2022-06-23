@@ -26,3 +26,7 @@ spark-datasource/target/
 spark-datasource/project/target/
 spark-datasource/project/project/
 spark-datasource/.idea/
+.idea/
+spark-datasource/.bsp/
+spark-datasource/null/
+*VerifySourceReader*

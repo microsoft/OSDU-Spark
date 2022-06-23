@@ -31,18 +31,18 @@ class OSDUWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) 
 
 class OSDUBatchStreamWrite(logicalInfo: LogicalWriteInfo, pyhsicalInfo: PhysicalWriteInfo) extends BatchWrite with StreamingWrite {
   override def createStreamingWriterFactory(info: PhysicalWriteInfo): StreamingDataWriterFactory
-    = new OSDUDataWriterFactory(
-      logicalInfo.options.get("osduApiEndpoint"),
-      logicalInfo.options.get("partitionId"),
-      AuthUtil.getBearerToken(logicalInfo.options),
-      logicalInfo.schema)
+  = new OSDUDataWriterFactory(
+    logicalInfo.options.get("osduApiEndpoint"),
+    logicalInfo.options.get("partitionId"),
+    AuthUtil.getBearerToken(logicalInfo.options),
+    logicalInfo.schema)
 
   override def createBatchWriterFactory(info: PhysicalWriteInfo): DataWriterFactory
-    = new OSDUDataWriterFactory(
-        logicalInfo.options.get("osduApiEndpoint"),
-        logicalInfo.options.get("partitionId"),
-        AuthUtil.getBearerToken(logicalInfo.options),
-        logicalInfo.schema)
+  = new OSDUDataWriterFactory(
+    logicalInfo.options.get("osduApiEndpoint"),
+    logicalInfo.options.get("partitionId"),
+    AuthUtil.getBearerToken(logicalInfo.options),
+    logicalInfo.schema)
 
   override def commit(messages: Array[WriterCommitMessage]): Unit = {
   }
@@ -61,8 +61,8 @@ class OSDUDataWriterFactory(osduApiEndpoint: String, osduPartitionId: String, be
   extends DataWriterFactory with StreamingDataWriterFactory{
 
   override def createWriter(partitionId: Int, taskId: Long): DataWriter[InternalRow]
-    = new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
+  = new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
 
   override def createWriter(partitionId: Int, taskId: Long, epochId: Long): DataWriter[InternalRow]
-    = new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
+  = new OSDUDataWriter(osduApiEndpoint, osduPartitionId, bearerToken, schema)
 }

@@ -19,7 +19,7 @@ package com.microsoft.spark.osdu
 
 import org.apache.spark.sql.connector.catalog.{SupportsRead, SupportsWrite, Table, TableCapability}
 import org.apache.spark.sql.connector.expressions.Transform
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
+import org.apache.spark.sql.types.{StructType}
 
 import java.util
 import org.apache.spark.sql.connector.read._
@@ -57,7 +57,7 @@ class OSDUTable(structType: StructType, transforms: Array[Transform], val query:
     }
   }
 
-  override def capabilities(): util.Set[TableCapability] = 
+  override def capabilities(): util.Set[TableCapability] =
     Set(
       TableCapability.BATCH_READ,
       TableCapability.BATCH_WRITE,
@@ -96,5 +96,5 @@ class SimplePhysicalWriteInfo extends PhysicalWriteInfo {
 }
 
 class OSDUWriteBuilder(info: LogicalWriteInfo) extends WriteBuilder {
- override def build(): Write = new OSDUWrite(info, new SimplePhysicalWriteInfo())
+  override def build(): Write = new OSDUWrite(info, new SimplePhysicalWriteInfo())
 }

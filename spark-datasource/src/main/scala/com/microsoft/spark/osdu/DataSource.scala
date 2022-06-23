@@ -24,7 +24,6 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.connector.catalog.{CatalogPlugin, Identifier, SupportsCatalogOptions, Table, TableProvider}
 import org.apache.spark.sql.connector.expressions.Transform
 
-import scala.collection.JavaConverters._
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
 /** Spark Table provider implementation for OSDU Record API */

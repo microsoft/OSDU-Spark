@@ -1,5 +1,4 @@
-scalaVersion := "2.12.15" 
-// scalaVersion := "2.13.1"
+scalaVersion := "2.12.15"
 
 name := "OSDU Spark Connector"
 // needs to match OSS Sonatype profile name
@@ -9,10 +8,12 @@ version := "1.0.1"
 val sparkVersion = "3.2.0"
 
 libraryDependencies ++= Seq( 
-  "org.apache.spark" %% "spark-core" % sparkVersion % "compile",
-  "org.apache.spark" %% "spark-sql" % sparkVersion % "compile",
+  "org.apache.spark" %% "spark-core" % sparkVersion % Provided,
+  "org.apache.spark" %% "spark-sql" % sparkVersion % Provided,
   "org.scalatest" %% "scalatest" % "3.2.10" % "test",
-  "io.github.nur858" % "com-microsoft-osdu-api" % "0.0.4"
+  "io.github.nur858" % "com-microsoft-osdu-api" % "0.0.4",
+  "org.asynchttpclient" % "async-http-client" % "2.12.3"
+
 )
 
 resolvers += Resolver.mavenLocal
@@ -23,3 +24,8 @@ publishTo := sonatypePublishToBundle.value
 
 ThisBuild / sonatypeCredentialHost := "oss.sonatype.org"
 ThisBuild / versionScheme := Some("semver-spec")
+
+assemblyMergeStrategy in assembly := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
